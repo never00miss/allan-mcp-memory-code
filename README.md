@@ -221,6 +221,259 @@ You have access to a knowledge graph at http://localhost:19089. Use it to persis
 
 ---
 
+## Cline Integration (VS Code)
+
+[Cline](https://github.com/cline/cline) is a VS Code extension for AI-assisted coding. Add Allan Memory to your Cline MCP settings:
+
+### Configure MCP Server
+
+Open VS Code settings and edit Cline's MCP configuration (`cline_mcp_settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "allan-memory": {
+      "command": "node",
+      "args": ["/path/to/allan-mcp-memory-code/lib/index.js"],
+      "env": {
+        "FALKORDB_URI": "redis://localhost:6380",
+        "LLM_API_URL": "http://localhost:11435/v1",
+        "LLM_MODEL": "qwen2.5:7b-instruct",
+        "EMBEDDER_API_URL": "http://localhost:11435/v1",
+        "EMBEDDER_MODEL": "nomic-embed-text"
+      }
+    }
+  }
+}
+```
+
+### Custom Instructions for Cline
+
+Add to your Cline custom instructions:
+
+```
+You have access to a knowledge graph memory system via the allan-memory MCP server.
+
+When working on codebases:
+- SEARCH before answering questions about architecture or patterns
+- STORE discoveries: architecture decisions, debugging insights, non-obvious constraints
+- Use project name as group_id to namespace memories
+
+Available tools:
+- add_memory: Store knowledge (name, content, group_id)
+- search_nodes: Find entities (query, group_ids, limit)
+- search_facts: Find relationships (query, group_ids, limit)
+```
+
+---
+
+## Kilo Code Integration
+
+[Kilo Code](https://kilocode.ai) supports MCP servers for extended capabilities.
+
+### MCP Configuration
+
+Add to your Kilo Code MCP settings:
+
+```json
+{
+  "servers": {
+    "allan-memory": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/allan-mcp-memory-code/lib/index.js"],
+      "env": {
+        "FALKORDB_URI": "redis://localhost:6380",
+        "LLM_API_URL": "http://localhost:11435/v1",
+        "LLM_MODEL": "qwen2.5:7b-instruct",
+        "EMBEDDER_API_URL": "http://localhost:11435/v1",
+        "EMBEDDER_MODEL": "nomic-embed-text"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Continue.dev Integration
+
+[Continue](https://continue.dev) is an open-source AI code assistant. Configure Allan Memory as a context provider:
+
+### Config (~/.continue/config.json)
+
+```json
+{
+  "contextProviders": [
+    {
+      "name": "http",
+      "params": {
+        "url": "http://localhost:19089/v1/memory/search/nodes",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "query": "{{{ input }}}",
+          "limit": 5
+        },
+        "title": "Allan Memory"
+      }
+    }
+  ]
+}
+```
+
+### Custom Instructions
+
+Add to your Continue system prompt:
+
+```
+You have access to Allan Memory knowledge graph at http://localhost:19089.
+Use @Allan Memory context to search for stored codebase knowledge.
+```
+
+---
+
+## Cursor Integration
+
+[Cursor](https://cursor.sh) can use Allan Memory via its custom API feature or rules.
+
+### Cursor Rules (.cursorrules)
+
+Create a `.cursorrules` file in your project root:
+
+```
+# Knowledge Graph Memory
+
+You have access to a knowledge graph API at http://localhost:19089.
+
+## Before answering architecture questions:
+Run: curl -s -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"<topic>","limit":5}'
+
+## After discovering important patterns:
+Run: curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"<title>","episode_body":"<knowledge>","group_id":"<project>"}'
+
+## Guidelines:
+- Search before answering codebase questions
+- Store: architecture decisions, debugging insights, gotchas
+- Use project name as group_id
+```
+
+---
+
+## Windsurf (Codeium) Integration
+
+[Windsurf](https://codeium.com/windsurf) by Codeium supports MCP servers.
+
+### MCP Configuration
+
+Add to Windsurf MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "allan-memory": {
+      "command": "node",
+      "args": ["/path/to/allan-mcp-memory-code/lib/index.js"],
+      "env": {
+        "FALKORDB_URI": "redis://localhost:6380",
+        "LLM_API_URL": "http://localhost:11435/v1",
+        "LLM_MODEL": "qwen2.5:7b-instruct",
+        "EMBEDDER_API_URL": "http://localhost:11435/v1",
+        "EMBEDDER_MODEL": "nomic-embed-text"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Aider Integration
+
+[Aider](https://aider.chat) is a terminal-based AI pair programmer.
+
+### Shell Script Wrapper
+
+Create `aider-with-memory.sh`:
+
+```bash
+#!/bin/bash
+# Search Allan Memory before starting Aider
+
+PROJECT_NAME=$(basename $(pwd))
+echo "🔍 Searching knowledge graph for: $PROJECT_NAME"
+
+CONTEXT=$(curl -s -X POST http://localhost:19089/v1/memory/search/nodes \
+  -H "Content-Type: application/json" \
+  -d "{\"query\":\"$PROJECT_NAME\",\"limit\":5}" | jq -r '.data[] | "- \(.name): \(.summary)"')
+
+if [ -n "$CONTEXT" ]; then
+  echo "📚 Found context:"
+  echo "$CONTEXT"
+  echo ""
+fi
+
+# Start aider with context
+aider --message "Previous knowledge about this project: $CONTEXT" "$@"
+```
+
+### Post-Session Memory Save
+
+Add to your workflow:
+
+```bash
+# After aider session, save learnings
+curl -X POST http://localhost:19089/v1/memory \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Aider Session","episode_body":"<paste session summary>","group_id":"my-project"}'
+```
+
+---
+
+## GitHub Copilot Chat Integration
+
+For GitHub Copilot in VS Code, use workspace instructions:
+
+### .github/copilot-instructions.md
+
+```markdown
+# Knowledge Graph Memory
+
+This project uses Allan Memory for persistent knowledge storage.
+
+## API Endpoints (http://localhost:19089)
+- POST /v1/memory - Store knowledge
+- POST /v1/memory/search/nodes - Search entities
+- POST /v1/memory/search/facts - Search relationships
+
+## Usage Guidelines
+- Search existing knowledge before making architecture decisions
+- Store important discoveries using the API
+- Use project name as group_id for namespacing
+
+## Example Commands
+Search: `curl -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"authentication"}'`
+Store: `curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"Auth Pattern","episode_body":"Uses JWT with refresh tokens","group_id":"my-project"}'`
+```
+
+---
+
+## Generic HTTP Integration
+
+For any tool that supports custom API calls, use these endpoints:
+
+| Action | Method | Endpoint | Body |
+|--------|--------|----------|------|
+| Store | POST | `/v1/memory` | `{"name":"...","episode_body":"...","group_id":"..."}` |
+| Search Entities | POST | `/v1/memory/search/nodes` | `{"query":"...","limit":10}` |
+| Search Relations | POST | `/v1/memory/search/facts` | `{"query":"...","limit":10}` |
+| List Episodes | GET | `/v1/memory/episodes?group_id=...` | - |
+| Health Check | GET | `/v1/health` | - |
+
+---
+
 ## Local Development
 
 ```bash
