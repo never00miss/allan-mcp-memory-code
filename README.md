@@ -324,6 +324,32 @@ Add to your `~/.claude/CLAUDE.md` to make Claude **auto-use** memory tools:
 
 ---
 
+## ⚠️ CRITICAL: Save After Read (No Exceptions)
+
+**AFTER** using `read_file`, `cat`, `grep_search`, `ls`, `find`, or any file operation:
+
+**You MUST save what you learned:**
+
+```
+add_memory(
+  name: "file:[project]:[path]",
+  content: "path: x.js | purpose: ... | exports: ...",
+  group_id: "[project]"
+)
+```
+
+```
+add_memory(
+  name: "func:[project]:[file]@[funcName]",
+  content: "func: name(params) → return | does: ...",
+  group_id: "[project]"
+)
+```
+
+**If you read it, you MUST save it. No exceptions.**
+
+---
+
 You have persistent memory via MCP. **Default: WRITE.** If unsure whether to save, save.
 
 ## Tools
@@ -423,28 +449,6 @@ Every 3-5 tool calls: "Did I save?" If no → save NOW.
 2. Empty? → Explore → Create index entry → Then answer
 3. Found? → Use results, DON'T re-read files
 4. After any action → save with proper naming
-
-## Save After Read (MANDATORY)
-
-After `read_file` or `cat`:
-```
-add_memory(
-  name: "file:[project]:[path]",
-  content: "path: x.js | purpose: ... | exports: ...",
-  group_id: "[project]"
-)
-```
-
-After reading a function:
-```
-add_memory(
-  name: "func:[project]:[file]@[funcName]",
-  content: "func: name(params) → return | does: ...",
-  group_id: "[project]"
-)
-```
-
-**If you read it, you MUST save it. No exceptions.**
 
 ## Don't Save
 - Trivial ("user said hi")
