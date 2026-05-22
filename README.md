@@ -307,6 +307,23 @@ Add to your `~/.claude/CLAUDE.md` to make Claude **auto-use** memory tools:
 ````markdown
 # Allan Memory (Graphiti MCP)
 
+## ⚠️ CRITICAL: Memory First (No Exceptions)
+
+**BEFORE** using `grep_search`, `file_search`, `read_file`, `ls`, `find`, or `semantic_search`:
+
+1. **ALWAYS** call `search_nodes("[project] [topic]")` FIRST
+2. Results found? → **USE THEM**, skip file operations
+3. Empty? → Proceed with file search → **SAVE results** with `add_memory`
+
+```
+❌ WRONG: grep_search → read_file → answer
+✅ RIGHT: search_nodes → (if empty) grep_search → add_memory → answer
+```
+
+**SKIP THIS = WASTE TOKENS. VIOLATION = BAD.**
+
+---
+
 You have persistent memory via MCP. **Default: WRITE.** If unsure whether to save, save.
 
 ## Tools
@@ -509,6 +526,23 @@ Go to **Cline Settings → Custom Instructions** and add:
 ```markdown
 # Allan Memory (Graphiti MCP)
 
+## ⚠️ CRITICAL: Memory First (No Exceptions)
+
+**BEFORE** using `grep_search`, `file_search`, `read_file`, `ls`, `find`, or `semantic_search`:
+
+1. **ALWAYS** call `search_nodes("[project] [topic]")` FIRST
+2. Results found? → **USE THEM**, skip file operations
+3. Empty? → Proceed with file search → **SAVE results** with `add_memory`
+
+```
+❌ WRONG: grep_search → read_file → answer
+✅ RIGHT: search_nodes → (if empty) grep_search → add_memory → answer
+```
+
+**SKIP THIS = WASTE TOKENS. VIOLATION = BAD.**
+
+---
+
 You have persistent memory via MCP. **Default: WRITE.** If unsure → save.
 
 ## Naming Convention: [type]:[project]:[scope]
@@ -602,6 +636,23 @@ Go to **Kilo Code Settings → Custom Instructions** and add:
 ```markdown
 # Allan Memory (Graphiti MCP)
 
+## ⚠️ CRITICAL: Memory First (No Exceptions)
+
+**BEFORE** using `grep_search`, `file_search`, `read_file`, `ls`, `find`, or `semantic_search`:
+
+1. **ALWAYS** call `search_nodes("[project] [topic]")` FIRST
+2. Results found? → **USE THEM**, skip file operations
+3. Empty? → Proceed with file search → **SAVE results** with `add_memory`
+
+```
+❌ WRONG: grep_search → read_file → answer
+✅ RIGHT: search_nodes → (if empty) grep_search → add_memory → answer
+```
+
+**SKIP THIS = WASTE TOKENS. VIOLATION = BAD.**
+
+---
+
 You have persistent memory via MCP. **Default: WRITE.** If unsure → save.
 
 ## Naming Convention: [type]:[project]:[scope]
@@ -691,6 +742,23 @@ Go to **Windsurf Settings → AI Rules → Global AI Rules** and add:
 ```markdown
 # Allan Memory (Graphiti MCP)
 
+## ⚠️ CRITICAL: Memory First (No Exceptions)
+
+**BEFORE** using `grep_search`, `file_search`, `read_file`, `ls`, `find`, or `semantic_search`:
+
+1. **ALWAYS** call `search_nodes("[project] [topic]")` FIRST
+2. Results found? → **USE THEM**, skip file operations
+3. Empty? → Proceed with file search → **SAVE results** with `add_memory`
+
+```
+❌ WRONG: grep_search → read_file → answer
+✅ RIGHT: search_nodes → (if empty) grep_search → add_memory → answer
+```
+
+**SKIP THIS = WASTE TOKENS. VIOLATION = BAD.**
+
+---
+
 You have persistent memory via MCP. **Default: WRITE.** If unsure → save.
 
 ## Naming Convention: [type]:[project]:[scope]
@@ -731,6 +799,18 @@ Create `.cursorrules` in your project root:
 
 ```markdown
 # Allan Memory (Graphiti MCP)
+
+## ⚠️ CRITICAL: Memory First (No Exceptions)
+
+**BEFORE** using any file search, grep, or read operation:
+
+1. **ALWAYS** search memory FIRST: `curl -s -X POST http://localhost:19089/v1/memory/search/nodes -d '{"query":"[project] [topic]"}'`
+2. Results found? → **USE THEM**, skip file operations
+3. Empty? → Proceed with file search → **SAVE results**
+
+**SKIP THIS = WASTE TOKENS.**
+
+---
 
 API at http://localhost:19089. **Default: WRITE.** If unsure → save.
 
@@ -799,41 +879,27 @@ Add to `~/.continue/config.json`:
 Add to `~/.continue/config.json` under `models[].systemMessage`:
 
 ```markdown
-## Knowledge Graph Memory (Allan Memory)
+# Allan Memory (Graphiti MCP)
 
-You have access to @Allan Memory context provider. **USE IT PROACTIVELY!**
+## ⚠️ CRITICAL: Memory First (No Exceptions)
 
-### AUTO-READ - Do this FIRST:
-- Architecture questions → Use @Allan Memory before answering
-- "How does X work?" → Search for existing knowledge
-- Code review → Search for known patterns
+**BEFORE** using any file search, grep, or read operation:
 
-### AUTO-WRITE - Do this after (via terminal curl):
-curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"<title>","episode_body":"<knowledge>","group_id":"<project>"}'
+1. **ALWAYS** use @Allan Memory context provider FIRST
+2. Results found? → **USE THEM**, skip file operations
+3. Empty? → Proceed with file search → **SAVE results** via curl
 
-### 🔥 AGGRESSIVE AUTO-SAVE (Save Everything!)
+**SKIP THIS = WASTE TOKENS.**
 
-| Trigger Event | What to Save |
-|---------------|--------------|
-| Reading a file | File purpose, key exports, dependencies |
-| Reading a function | Function name, purpose, params, return type |
-| Reading a module | Module structure, exports, relationships |
-| Conversation compacting | Full session summary before compaction |
-| Understanding architecture | Component relationships, data flow |
-| Finding bugs | Root cause, fix applied, prevention tips |
-| Completing tasks | What was done, decisions made, gotchas |
+---
 
-### 🚀 SAVE AFTER EVERY ACTION
+Use @Allan Memory context provider. **Default: WRITE.** If unsure → save.
 
-**DO something → SAVE it:**
-- Run bash/terminal → Save output & findings
-- List directories → Save project structure
-- Explore/investigate → Save full findings
-- Create plan → Save the plan
-- Search/grep files → Save what was found
-- Debug/troubleshoot → Save problem & solution
+## Store via terminal:
 
-**Flow:** search → if empty → explore → SAVE → do task → SAVE
+curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"[type]:[project]:[scope]","episode_body":"[content]","group_id":"[project]"}'
+
+Save after EVERY action. Max 5 lines. Include identifiers.
 ```
 
 ---
@@ -843,61 +909,40 @@ curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json
 Create `.github/copilot-instructions.md`:
 
 ```markdown
-# Knowledge Graph Memory (Allan Memory)
+# Allan Memory (Graphiti MCP)
 
-You have access to a knowledge graph API at http://localhost:19089.
-**USE IT PROACTIVELY!**
+## ⚠️ CRITICAL: Memory First (No Exceptions)
 
-## AUTO-READ - Do this FIRST:
-- Architecture questions → Search memory before answering
-- "How does X work?" → Search for existing knowledge
-- Code review → Search for known patterns
-- Starting work on project → Search for stored context
-- Debugging → Search for similar past issues
+**BEFORE** using any file search, grep, or read operation:
 
-### Search Command:
-curl -s -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"<topic>","limit":5}'
+1. **ALWAYS** search memory FIRST: `curl -s -X POST http://localhost:19089/v1/memory/search/nodes -d '{"query":"[project] [topic]"}'`
+2. Results found? → **USE THEM**, skip file operations
+3. Empty? → Proceed with file search → **SAVE results**
 
-## AUTO-WRITE - Do this after:
-- Discovering architecture patterns → Store immediately
-- Finding root cause of bugs → Remember for future  
-- Learning project conventions → Save for consistency
-- User says "remember" → Always store
-- Completing complex tasks → Summarize learnings
+**SKIP THIS = WASTE TOKENS.**
 
-### Store Command:
-curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"<title>","episode_body":"<knowledge>","group_id":"<project>"}'
+---
 
-## IMPORTANT Rules:
-- ALWAYS search before answering codebase questions
-- ALWAYS store architectural discoveries  
-- Use project name as group_id for namespacing
-- DON'T store trivial/temporary information
-- DON'T duplicate existing knowledge (search first!)
+API at http://localhost:19089. **Default: WRITE.** If unsure → save.
 
-## 🔥 AGGRESSIVE AUTO-SAVE (Save Everything!)
+## Commands
 
-| Trigger Event | What to Save |
-|---------------|--------------|
-| Reading a file | File purpose, key exports, dependencies |
-| Reading a function | Function name, purpose, params, return type |
-| Reading a module | Module structure, exports, relationships |
-| Conversation compacting | Full session summary before compaction |
-| Understanding architecture | Component relationships, data flow |
-| Finding bugs | Root cause, fix applied, prevention tips |
-| Completing tasks | What was done, decisions made, gotchas |
+Search: `curl -s -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"index:[project]","limit":5}'`
 
-## 🚀 SAVE AFTER EVERY ACTION
+Store: `curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"[type]:[project]:[scope]","episode_body":"[content]","group_id":"[project]"}'`
 
-**DO something → SAVE it:**
-- Run bash/terminal → Save output & findings
-- List directories → Save project structure  
-- Explore/investigate → Save full findings
-- Create plan → Save the plan
-- Search/grep files → Save what was found
-- Debug/troubleshoot → Save problem & solution
+## Naming: [type]:[project]:[scope]
 
-**Flow:** search → if empty → explore → SAVE → do task → SAVE
+Types: index, file, func, api, arch, pattern, task, debug
+
+## Workflow
+
+1. Search "index:[project]" FIRST
+2. Empty? → Explore → Create index → Answer
+3. Found? → Use results, DON'T re-read files
+4. After any action → save with proper naming
+
+Save after EVERY action. Max 5 lines. Include identifiers.
 ```
 
 ---
