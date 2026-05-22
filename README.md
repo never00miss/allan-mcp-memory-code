@@ -6,72 +6,133 @@ Knowledge Graph Service with FalkorDB - Graphiti-style memory system for LLM age
 
 - Store episodes (text/json/message) and automatically extract entities + relationships
 - Hybrid search (text + vector) for nodes and facts
-- OpenAI-compatible LLM and embedding endpoints (works with z.ai, Ollama, OpenAI)
+- **Full Offline Mode** - No API keys required, runs entirely on local hardware
+- OpenAI-compatible LLM and embedding endpoints (works with Ollama, OpenRouter, OpenAI)
 - Clean Architecture (DDD)
-- **All-in-one Docker setup** (FalkorDB + Ollama + Service)
+- **All-in-one Docker setup** (FalkorDB + Ollama + LLM + Embedding)
 - **Claude Code integration** via CLAUDE.md instructions
 
-## Quick Start (Docker)
+## Hardware Requirements
+
+### Minimum (Full Offline with 7B LLM)
+
+| Component | Requirement |
+|-----------|-------------|
+| **RAM** | 16GB |
+| **Storage** | 15GB free (Docker images + models) |
+| **CPU** | 4+ cores |
+| **GPU** | Optional (CPU inference works) |
+
+### Recommended
+
+| Component | Recommendation |
+|-----------|----------------|
+| **RAM** | 32GB+ |
+| **Storage** | SSD with 20GB+ free |
+| **GPU** | NVIDIA with 8GB+ VRAM or Apple Silicon M1/M2/M3 |
+
+### Tested Platforms
+
+| Platform | RAM | LLM Model | Performance |
+|----------|-----|-----------|-------------|
+| MacBook Pro M2 | 16GB | qwen2.5:7b-instruct | ✅ Smooth (~10 tok/s) |
+| MacBook Pro M1 | 16GB | qwen2.5:7b-instruct | ✅ Good (~8 tok/s) |
+| Linux + RTX 3060 | 16GB | qwen2.5:7b-instruct | ✅ Fast (~25 tok/s) |
+| Linux + RTX 4090 | 32GB | qwen2.5:14b | ✅ Very fast (~40 tok/s) |
+| Windows + CPU only | 16GB | qwen2.5:7b-instruct | ⚠️ Slow (~2 tok/s) |
+
+### Model Sizes
+
+| Model | Download | RAM Usage |
+|-------|----------|-----------|
+| nomic-embed-text (embedding) | ~270MB | ~500MB |
+| qwen2.5:7b-instruct (LLM) | ~4.7GB | ~6GB |
+| **Total** | **~5GB** | **~6.5GB** |
+
+## Quick Start (Full Offline - Docker)
+
+**No API keys required!** Everything runs locally.
 
 ```bash
-# Edit docker-compose.yml to set your LLM_API_KEY
-# Then start everything:
+# Clone the repository
+git clone https://github.com/never00miss/allan-mcp-memory-code.git
+cd allan-mcp-memory-code
+
+# Start all services (FalkorDB + Ollama + Models)
 docker compose up -d
 
-# First run will pull nomic-embed-text model (~270MB)
-# Wait for all services to be healthy
+# First run will download:
+#   - nomic-embed-text (~270MB) - for embeddings
+#   - qwen2.5:7b-instruct (~4.7GB) - for entity extraction
+# This may take 5-15 minutes depending on your internet speed
+
+# Check services status
 docker compose ps
+
+# Wait until ollama-init shows "exited (0)" = models downloaded
+docker compose logs ollama-init
+
+# Run the service locally
+npm install
+npm start
 
 # Health check
 curl http://localhost:19089/v1/health
 ```
 
-### Environment Variables (in docker-compose.yml)
+### Environment Variables (in .env or docker-compose.yml)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable | Default (Offline) | Description |
+|----------|-------------------|-------------|
 | `PORT` | 19089 | Service port |
-| `LLM_API_URL` | https://openrouter.ai/api/v1 | LLM endpoint |
-| `LLM_API_KEY` | - | OpenRouter/OpenAI API key |
-| `LLM_MODEL` | qwen/qwen-2.5-7b-instruct | Model for entity extraction |
-| `EMBEDDER_API_URL` | http://ollama:11434/v1 | Embedding endpoint |
+| `LLM_API_URL` | http://localhost:11435/v1 | LLM endpoint (Ollama) |
+| `LLM_API_KEY` | ollama | API key (any value for Ollama) |
+| `LLM_MODEL` | qwen2.5:7b-instruct | Model for entity extraction |
+| `EMBEDDER_API_URL` | http://localhost:11435/v1 | Embedding endpoint |
 | `EMBEDDER_MODEL` | nomic-embed-text | Embedding model |
 | `FALKORDB_GRAPH_NAME` | allan_memory | Graph name |
 | `LOG_LEVEL` | info | debug/info/warn/error |
 
-### LLM Model Best Practices
+### LLM Model Options
 
-For entity extraction, use **instruction-following models** that reliably output structured JSON. Avoid reasoning models.
+#### 🏠 Local (Ollama) - Full Offline
 
-#### ✅ Recommended Models (OpenRouter)
+| Model | Size | Command | Notes |
+|-------|------|---------|-------|
+| `qwen2.5:7b-instruct` | 4.7GB | `ollama pull qwen2.5:7b-instruct` | **Recommended** - Best balance |
+| `qwen2.5:3b-instruct` | 2.0GB | `ollama pull qwen2.5:3b-instruct` | Lighter, good for 8GB RAM |
+| `qwen2.5:14b-instruct` | 9.0GB | `ollama pull qwen2.5:14b-instruct` | Better quality, needs 16GB+ RAM |
+
+```env
+# .env for full offline mode
+LLM_API_URL=http://localhost:11435/v1
+LLM_API_KEY=ollama
+LLM_MODEL=qwen2.5:7b-instruct
+```
+
+#### ☁️ Cloud (OpenRouter) - API Key Required
 
 | Model | Size | Notes |
 |-------|------|-------|
-| `qwen/qwen-2.5-7b-instruct` | 7B | **Best choice** - Fast, cheap, reliable JSON output |
-| `google/gemma-3-4b-it` | 4B | Lightweight, wraps JSON in markdown |
+| `qwen/qwen-2.5-7b-instruct` | 7B | **Best choice** - Fast, cheap, reliable |
+| `google/gemma-3-4b-it` | 4B | Lightweight alternative |
+
+```env
+# .env for OpenRouter
+LLM_API_URL=https://openrouter.ai/api/v1
+LLM_API_KEY=sk-or-v1-your-key-here
+LLM_MODEL=qwen/qwen-2.5-7b-instruct
+```
 
 #### ❌ Models to Avoid
 
 | Model | Issue |
 |-------|-------|
-| `z-ai/glm-5.1` | Reasoning model - returns `content: null`, response in `reasoning` field |
-| `microsoft/phi-4-mini-instruct` | Doesn't follow structured JSON prompts, returns prose |
+| `z-ai/glm-5.1` | Reasoning model - returns `content: null` |
+| `microsoft/phi-4-mini-instruct` | Doesn't follow JSON prompts |
 | `meta-llama/llama-3.2-3b-instruct` | Inconsistent JSON formatting |
 
-#### Why Some Models Fail
-
-1. **Reasoning models** (e.g., `z-ai/glm-5.1`) return responses in a `reasoning` field instead of `content`, causing empty extraction
-2. **Small models** may not follow complex structured output instructions reliably
-3. **Code-focused models** may try to generate code instead of JSON data
-
-#### Local LLM (Ollama)
-
-For local deployment, use:
-```env
-LLM_API_URL=http://localhost:11434/v1
-LLM_API_KEY=ollama
-LLM_MODEL=qwen2.5:7b-instruct
-```
+> **Why some models fail:** Reasoning models return responses in `reasoning` field instead of `content`. Small models may not follow complex structured output instructions reliably.
 
 ### Exposed Ports
 
