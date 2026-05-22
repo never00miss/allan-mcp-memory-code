@@ -5,6 +5,7 @@
 ## Features
 
 - **Full Offline Mode** - No API keys required, runs entirely on local hardware
+- **Cloud Mode** - Use OpenRouter/OpenAI for low-resource machines (~$0.50/month)
 - Auto-extract entities + relationships from text
 - Hybrid search (text + vector) for nodes and facts
 - All-in-one Docker setup (FalkorDB + Ollama + LLM + Embedding)
@@ -12,7 +13,7 @@
 
 ---
 
-## Quick Start
+## Quick Start (Offline)
 
 **No API keys required!** Everything runs locally.
 
@@ -33,6 +34,72 @@ docker compose logs ollama-init -f
 ```
 
 **That's it!** Now integrate with your AI coding assistant below.
+
+---
+
+## Quick Start (Cloud - OpenRouter)
+
+**Lightweight setup!** Only FalkorDB runs locally, LLM/Embedding via cloud.
+
+```bash
+# Clone the repository
+git clone https://github.com/never00miss/allan-mcp-memory-code.git
+cd allan-mcp-memory-code
+
+# Start only FalkorDB (graph database)
+docker compose up falkordb -d
+
+# Configure cloud API
+cp .env.example .env
+```
+
+Edit `.env` for OpenRouter:
+
+```env
+# LLM (OpenRouter)
+LLM_API_URL=https://openrouter.ai/api/v1
+LLM_API_KEY=sk-or-v1-your-key-here
+LLM_MODEL=qwen/qwen-2.5-7b-instruct
+
+# Embedding (OpenRouter or local Ollama)
+EMBEDDER_API_URL=https://openrouter.ai/api/v1
+EMBEDDER_API_KEY=sk-or-v1-your-key-here
+EMBEDDER_MODEL=openai/text-embedding-3-small
+
+# FalkorDB
+FALKORDB_URI=redis://localhost:6380
+```
+
+```bash
+# Install and run
+npm install
+npm start
+
+# Health check
+curl http://localhost:19089/v1/health
+```
+
+### OpenRouter Cost Estimate (1 Hour Coding Session)
+
+| Activity | Requests | Tokens/Req | Total Tokens | Cost |
+|----------|----------|------------|--------------|------|
+| Entity extraction | ~20 | ~500 | ~10,000 | ~$0.002 |
+| Embedding generation | ~50 | ~100 | ~5,000 | ~$0.0001 |
+| Search queries | ~30 | ~200 | ~6,000 | ~$0.001 |
+| **Total per hour** | **~100** | - | **~21,000** | **~$0.003** |
+
+**Monthly estimate (8hr/day, 20 days):** ~$0.50
+
+> 💡 **Tip:** Use `qwen/qwen-2.5-7b-instruct` ($0.00018/1K tokens) - extremely cheap and reliable for entity extraction.
+
+### Recommended Cloud Models
+
+| Provider | Model | Cost/1K tokens | Notes |
+|----------|-------|----------------|-------|
+| OpenRouter | `qwen/qwen-2.5-7b-instruct` | $0.00018 | **Best value** |
+| OpenRouter | `google/gemma-3-4b-it` | $0.00010 | Cheapest |
+| OpenRouter | `openai/gpt-4o-mini` | $0.00015 | High quality |
+| OpenAI | `gpt-4o-mini` | $0.00015 | Direct API |
 
 ---
 
