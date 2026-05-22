@@ -105,7 +105,71 @@ curl http://localhost:19089/v1/health
 
 ## Integration
 
-### Claude Code
+### Claude Code (MCP Server - No Permission Popup)
+
+Claude Code supports MCP servers natively. Configure to **auto-approve** tools and avoid permission popups.
+
+#### Step 1: Create MCP Server Config
+
+Create or edit `~/.claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "allan-memory": {
+      "command": "node",
+      "args": ["/full/path/to/allan-mcp-memory-code/lib/index.js"],
+      "env": {
+        "FALKORDB_URI": "redis://localhost:6380",
+        "LLM_API_URL": "http://localhost:11435/v1",
+        "LLM_API_KEY": "ollama",
+        "LLM_MODEL": "qwen2.5:7b-instruct",
+        "EMBEDDER_API_URL": "http://localhost:11435/v1",
+        "EMBEDDER_API_KEY": "ollama",
+        "EMBEDDER_MODEL": "nomic-embed-text"
+      }
+    }
+  },
+  "allowedTools": [
+    "mcp__allan-memory__add_memory",
+    "mcp__allan-memory__search_nodes",
+    "mcp__allan-memory__search_facts",
+    "mcp__allan-memory__get_episodes",
+    "mcp__allan-memory__delete_episode"
+  ]
+}
+```
+
+> ⚠️ **Important:** Replace `/full/path/to/allan-mcp-memory-code` with the actual path to your cloned repository.
+
+#### Step 2: Alternative - Use settings.json (VS Code)
+
+For Claude Code in VS Code, add to your VS Code `settings.json`:
+
+```json
+{
+  "claude.mcpServers": {
+    "allan-memory": {
+      "command": "node",
+      "args": ["${userHome}/allan-mcp-memory-code/lib/index.js"],
+      "env": {
+        "FALKORDB_URI": "redis://localhost:6380",
+        "LLM_API_URL": "http://localhost:11435/v1",
+        "LLM_MODEL": "qwen2.5:7b-instruct",
+        "EMBEDDER_API_URL": "http://localhost:11435/v1",
+        "EMBEDDER_MODEL": "nomic-embed-text"
+      }
+    }
+  },
+  "claude.allowedTools": [
+    "mcp__allan-memory__*"
+  ]
+}
+```
+
+> 💡 **Tip:** Use `"mcp__allan-memory__*"` to allow ALL tools from allan-memory without individual approval.
+
+#### Step 3: Add Instructions to CLAUDE.md
 
 Add to your `~/.claude/CLAUDE.md`:
 
@@ -126,6 +190,22 @@ You have access to a knowledge graph at http://localhost:19089.
 - Search: `curl -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"...","limit":10}'`
 - Store: `curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"...","episode_body":"...","group_id":"project-name"}'`
 ```
+
+#### Step 4: Restart Claude Code
+
+After configuration:
+1. Completely quit Claude Code / VS Code
+2. Restart the application
+3. The MCP server should connect automatically without permission popups
+
+#### Troubleshooting Permission Popups
+
+| Issue | Solution |
+|-------|----------|
+| Still seeing popups | Check `allowedTools` includes all tool names |
+| Server not connecting | Verify the path in `args` is correct and absolute |
+| Tools not available | Ensure Docker services are running (`docker compose ps`) |
+| Permission denied | Run `chmod +x /path/to/lib/index.js` |
 
 ---
 
