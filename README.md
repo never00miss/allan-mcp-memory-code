@@ -389,6 +389,8 @@ To make Claude use memory tools automatically, use these phrases:
 
 ### Cline (VS Code)
 
+#### Step 1: Add MCP Server
+
 Add to Cline MCP settings (`cline_mcp_settings.json`):
 
 **Local (Ollama):**
@@ -433,9 +435,35 @@ Add to Cline MCP settings (`cline_mcp_settings.json`):
 }
 ```
 
+#### Step 2: Add Custom Instructions
+
+Go to **Cline Settings → Custom Instructions** and add:
+
+```markdown
+## Knowledge Graph Memory (Allan Memory)
+
+You have MCP tools for persistent memory. **USE THEM PROACTIVELY!**
+
+### AUTO-READ (search_nodes) - Do this FIRST:
+- Architecture questions → Search memory before answering
+- "How does X work?" → Search for existing knowledge
+- Code review → Search for known patterns
+- Starting work on project → Search for stored context
+
+### AUTO-WRITE (add_memory) - Do this after:
+- Discovering architecture patterns → Store immediately
+- Finding root cause of bugs → Remember for future
+- Learning project conventions → Save for consistency
+- User says "remember" → Always store
+
+### Tools: search_nodes, search_facts, add_memory, get_episodes, delete_episode
+```
+
 ---
 
 ### Kilo Code
+
+#### Step 1: Add MCP Server
 
 Add to Kilo Code MCP settings:
 
@@ -483,12 +511,39 @@ Add to Kilo Code MCP settings:
 }
 ```
 
+#### Step 2: Add Custom Instructions
+
+Go to **Kilo Code Settings → Custom Instructions** and add:
+
+```markdown
+## Knowledge Graph Memory (Allan Memory)
+
+You have MCP tools for persistent memory. **USE THEM PROACTIVELY!**
+
+### AUTO-READ (search_nodes) - Do this FIRST:
+- Architecture questions → Search memory before answering
+- "How does X work?" → Search for existing knowledge
+- Code review → Search for known patterns
+- Starting work on project → Search for stored context
+
+### AUTO-WRITE (add_memory) - Do this after:
+- Discovering architecture patterns → Store immediately
+- Finding root cause of bugs → Remember for future
+- Learning project conventions → Save for consistency
+- User says "remember" → Always store
+
+### Tools: search_nodes, search_facts, add_memory, get_episodes, delete_episode
+```
+
 ---
 
 ### Windsurf (Codeium)
 
-Add to Windsurf MCP settings:
+#### Step 1: Add MCP Server
 
+Add to Windsurf MCP settings (`~/.codeium/windsurf/mcp_config.json`):
+
+**Local (Ollama):**
 ```json
 {
   "mcpServers": {
@@ -498,13 +553,60 @@ Add to Windsurf MCP settings:
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "http://localhost:11435/v1",
+        "LLM_API_KEY": "ollama",
         "LLM_MODEL": "qwen2.5:7b-instruct",
         "EMBEDDER_API_URL": "http://localhost:11435/v1",
+        "EMBEDDER_API_KEY": "ollama",
         "EMBEDDER_MODEL": "nomic-embed-text"
       }
     }
   }
 }
+```
+
+**Cloud (OpenRouter):**
+```json
+{
+  "mcpServers": {
+    "allan-memory": {
+      "command": "node",
+      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "env": {
+        "FALKORDB_URI": "redis://localhost:6380",
+        "LLM_API_URL": "https://openrouter.ai/api/v1",
+        "LLM_API_KEY": "sk-or-v1-your-key-here",
+        "LLM_MODEL": "qwen/qwen-2.5-7b-instruct",
+        "EMBEDDER_API_URL": "https://openrouter.ai/api/v1",
+        "EMBEDDER_API_KEY": "sk-or-v1-your-key-here",
+        "EMBEDDER_MODEL": "openai/text-embedding-3-small"
+      }
+    }
+  }
+}
+```
+
+#### Step 2: Add Global AI Rules
+
+Go to **Windsurf Settings → AI Rules → Global AI Rules** and add:
+
+```markdown
+## Knowledge Graph Memory (Allan Memory)
+
+You have MCP tools for persistent memory. **USE THEM PROACTIVELY!**
+
+### AUTO-READ (search_nodes) - Do this FIRST:
+- Architecture questions → Search memory before answering
+- "How does X work?" → Search for existing knowledge
+- Code review → Search for known patterns
+- Starting work on project → Search for stored context
+
+### AUTO-WRITE (add_memory) - Do this after:
+- Discovering architecture patterns → Store immediately
+- Finding root cause of bugs → Remember for future
+- Learning project conventions → Save for consistency
+- User says "remember" → Always store
+
+### Tools: search_nodes, search_facts, add_memory, get_episodes, delete_episode
 ```
 
 ---
@@ -513,21 +615,45 @@ Add to Windsurf MCP settings:
 
 Create `.cursorrules` in your project root:
 
-```
-# Knowledge Graph Memory
+```markdown
+# Knowledge Graph Memory (Allan Memory)
 
 You have access to a knowledge graph API at http://localhost:19089.
+**USE IT PROACTIVELY!**
 
-## Before answering architecture questions:
-Run: curl -s -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"<topic>","limit":5}'
+## AUTO-READ - Do this FIRST:
+- Architecture questions → Search memory before answering
+- "How does X work?" → Search for existing knowledge  
+- Code review → Search for known patterns
+- Starting work on project → Search for stored context
+- Debugging → Search for similar past issues
 
-## After discovering important patterns:
-Run: curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"<title>","episode_body":"<knowledge>","group_id":"<project>"}'
+### Search Command:
+curl -s -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"<topic>","limit":5}'
+
+## AUTO-WRITE - Do this after:
+- Discovering architecture patterns → Store immediately
+- Finding root cause of bugs → Remember for future
+- Learning project conventions → Save for consistency
+- User says "remember" → Always store
+- Completing complex tasks → Summarize learnings
+
+### Store Command:
+curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"<title>","episode_body":"<knowledge>","group_id":"<project>"}'
+
+## IMPORTANT Rules:
+- ALWAYS search before answering codebase questions
+- ALWAYS store architectural discoveries
+- Use project name as group_id for namespacing
+- DON'T store trivial/temporary information
+- DON'T duplicate existing knowledge (search first!)
 ```
 
 ---
 
 ### Continue.dev
+
+#### Step 1: Add Context Provider
 
 Add to `~/.continue/config.json`:
 
@@ -548,6 +674,24 @@ Add to `~/.continue/config.json`:
 }
 ```
 
+#### Step 2: Add System Message
+
+Add to `~/.continue/config.json` under `models[].systemMessage`:
+
+```markdown
+## Knowledge Graph Memory (Allan Memory)
+
+You have access to @Allan Memory context provider. **USE IT PROACTIVELY!**
+
+### AUTO-READ - Do this FIRST:
+- Architecture questions → Use @Allan Memory before answering
+- "How does X work?" → Search for existing knowledge
+- Code review → Search for known patterns
+
+### AUTO-WRITE - Do this after (via terminal curl):
+curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"<title>","episode_body":"<knowledge>","group_id":"<project>"}'
+```
+
 ---
 
 ### GitHub Copilot
@@ -555,11 +699,37 @@ Add to `~/.continue/config.json`:
 Create `.github/copilot-instructions.md`:
 
 ```markdown
-# Knowledge Graph Memory
+# Knowledge Graph Memory (Allan Memory)
 
-API at http://localhost:19089:
-- Search: `curl -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"..."}'`
-- Store: `curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"...","episode_body":"...","group_id":"project"}'`
+You have access to a knowledge graph API at http://localhost:19089.
+**USE IT PROACTIVELY!**
+
+## AUTO-READ - Do this FIRST:
+- Architecture questions → Search memory before answering
+- "How does X work?" → Search for existing knowledge
+- Code review → Search for known patterns
+- Starting work on project → Search for stored context
+- Debugging → Search for similar past issues
+
+### Search Command:
+curl -s -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"<topic>","limit":5}'
+
+## AUTO-WRITE - Do this after:
+- Discovering architecture patterns → Store immediately
+- Finding root cause of bugs → Remember for future  
+- Learning project conventions → Save for consistency
+- User says "remember" → Always store
+- Completing complex tasks → Summarize learnings
+
+### Store Command:
+curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"<title>","episode_body":"<knowledge>","group_id":"<project>"}'
+
+## IMPORTANT Rules:
+- ALWAYS search before answering codebase questions
+- ALWAYS store architectural discoveries  
+- Use project name as group_id for namespacing
+- DON'T store trivial/temporary information
+- DON'T duplicate existing knowledge (search first!)
 ```
 
 ---
