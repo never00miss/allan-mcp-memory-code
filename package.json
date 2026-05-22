@@ -1,7 +1,7 @@
 {
-  "name": "allan-memory",
+  "name": "allan-mcp-memory-code",
   "version": "1.0.0",
-  "description": "Knowledge Graph Service with FalkorDB - Graphiti-style memory system",
+  "description": "Persistent knowledge graph memory for AI coding assistants. Runs 100% offline with Docker.",
   "main": "lib/index.js",
   "scripts": {
     "start": "node lib/index.js",
