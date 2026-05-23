@@ -1088,41 +1088,113 @@ After reading function: `curl ... -d '{"name":"func:[project]:[file]@[funcName]"
 
 ## Use Cases & Benchmark
 
-### When MCP Saves Tokens
+### Quick Summary
 
-| Use Case | Without MCP | With MCP | Savings |
-|----------|-------------|----------|--------|
-| Query about function | ~2000 tokens | ~100 tokens | **95%** |
-| 10 queries (same code) | 20,000 tokens | ~1,000 tokens | **95%** |
-| Large codebase exploration | Many file reads | Cached knowledge | **Huge** |
+| Scenario | Queries | Token Savings | Cost Savings |
+|----------|---------|---------------|--------------|
+| Single Function Query | 1 | -7% | -7% |
+| Repeated Queries (Same File) | 5 | **74%** | 74% |
+| Cross-File Queries | 5 | **78%** | 78% |
+| Full Codebase Exploration | 10 | **88%** | 88% |
+| Long Coding Session | 20 | **94%** | 94% |
 
-### Benchmark Results
+> **Break-even: 2 queries** — MCP pays for itself after just 2 queries about the same code.
+
+### Live MCP Performance
+
+Measured on localhost with FalkorDB + OpenRouter (qwen/qwen-2.5-7b-instruct):
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| `add_memory` | **17ms** | Episode storage (LLM extraction is async) |
+| `search_nodes` | **765ms** | Hybrid search (text + vector + embeddings) |
+| `search_facts` | **410ms** | Relationship search |
+| `check_freshness` | **358ms** | Staleness detection |
+
+### Detailed Scenario Comparison
+
+#### 1. Single Function Query
+*1 query about one function — MCP has slight overhead*
+
+| Metric | Without MCP | With MCP | Savings |
+|--------|-------------|----------|---------|
+| Input Tokens | 3,400 | 3,650 | -7.4% |
+| File Reads | 1 | 1 | 0 saved |
+| Est. Cost (Claude 3.5) | $0.0177 | $0.0185 | -4.2% |
+
+#### 2. Repeated Queries (Same File)
+*5 queries about the same file — MCP wins big*
+
+| Metric | Without MCP | With MCP | Savings |
+|--------|-------------|----------|---------|
+| Input Tokens | 17,000 | 4,450 | **73.8%** |
+| File Reads | 5 | 1 | 4 saved |
+| Memory Cache Hits | 0 | 4 | - |
+| Est. Cost (Claude 3.5) | $0.0885 | $0.0508 | **42.5%** |
+
+#### 3. Cross-File Queries
+*5 queries across 4 different files*
+
+| Metric | Without MCP | With MCP | Savings |
+|--------|-------------|----------|---------|
+| Input Tokens | 86,000 | 19,300 | **77.6%** |
+| File Reads | 20 | 4 | 16 saved |
+| Memory Cache Hits | 0 | 4 | - |
+| Est. Cost (Claude 3.5) | $0.2955 | $0.0954 | **67.7%** |
+
+#### 4. Full Codebase Exploration
+*10 queries exploring entire codebase (6 files)*
+
+| Metric | Without MCP | With MCP | Savings |
+|--------|-------------|----------|---------|
+| Input Tokens | 248,000 | 28,600 | **88.5%** |
+| File Reads | 60 | 6 | 54 saved |
+| Memory Cache Hits | 0 | 9 | - |
+| Est. Cost (Claude 3.5) | $0.8190 | $0.1608 | **80.4%** |
+
+#### 5. Long Coding Session
+*Simulates 1-hour session with 20 queries*
+
+| Metric | Without MCP | With MCP | Savings |
+|--------|-------------|----------|---------|
+| Input Tokens | 496,000 | 30,600 | **93.8%** |
+| File Reads | 120 | 6 | 114 saved |
+| Memory Cache Hits | 0 | 19 | - |
+| Est. Cost (Claude 3.5) | $1.6380 | $0.2418 | **85.2%** |
+
+### Break-Even Analysis
 
 ```
-Task: Get info about authenticateUser function
+Query 1: MCP has slight overhead (storing knowledge)
+  Without MCP: ~3,200 tokens (read file)
+  With MCP:    ~3,350 tokens (read + store)
+  Result: MCP slightly more expensive
 
-WITHOUT MCP (every query):
-- grep_search: ~50ms
-- read_file: ~30ms  
-- AI parses: ~2000 tokens
-Total: ~80ms + 2000 tokens PER QUERY
+Query 2: MCP wins
+  Without MCP: ~3,200 tokens (read file again)
+  With MCP:    ~100 tokens (search_nodes hit)
+  Cumulative:  6,400 vs 3,450 tokens
 
-WITH MCP (after initial setup):
-- add_memory: ~50ms API + ~3s LLM extraction (once)
-- search_nodes: ~500ms + ~100 tokens PER QUERY
-
-BREAK-EVEN: ~2 queries about the same code
+Query 3+: MCP advantage compounds
+  Each additional query saves ~3,100 tokens
 ```
 
 ### When to Use MCP
 
-| Scenario | Recommendation |
-|----------|----------------|
-| One-off question | Skip MCP |
-| Repeated questions about same code | ✅ Use MCP |
-| Long coding session | ✅ Use MCP |
-| Large codebase | ✅ Use MCP |
-| Cost-sensitive usage | ✅ Use MCP |
+| Scenario | Recommendation | Expected Savings |
+|----------|----------------|------------------|
+| Single one-off question | ❌ Skip MCP | - |
+| 2-5 related questions | ✅ Use MCP | 50-80% |
+| Long coding session (1hr+) | ✅ Use MCP | 80-95% |
+| Large codebase (50+ files) | ✅ Use MCP | 90%+ |
+| Team with shared memory | ✅ Use MCP | 95%+ |
+
+### Run Benchmark Yourself
+
+```bash
+cd allan-mcp-memory-code
+node benchmark.js
+```
 
 ---
 

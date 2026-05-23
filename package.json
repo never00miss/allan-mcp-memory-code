@@ -10,6 +10,7 @@
     "start": "node lib/index.js",
     "mcp": "node lib/mcp-server.js",
     "dev": "nodemon lib/index.js",
+    "benchmark": "node benchmark.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
