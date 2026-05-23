@@ -622,7 +622,7 @@ Add to Cline MCP settings (`cline_mcp_settings.json`):
 
 Go to **Cline Settings → Custom Instructions** and add:
 
-```markdown
+````markdown
 # Allan Memory (Graphiti MCP)
 
 ## ⚠️ CRITICAL: Memory First (No Exceptions)
@@ -682,7 +682,7 @@ After `read_file`: `add_memory(name: "file:[project]:[path]", content: "path: x.
 After reading function: `add_memory(name: "func:[project]:[file]@[funcName]", content: "func: name(params) → return | does: ...")`
 
 **If you read it, you MUST save it.**
-```
+````
 
 ---
 
