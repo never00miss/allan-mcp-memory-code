@@ -123,7 +123,7 @@ claude mcp add allan-memory \
   -e EMBEDDER_API_URL=http://localhost:11435/v1 \
   -e EMBEDDER_API_KEY=ollama \
   -e EMBEDDER_MODEL=nomic-embed-text \
-  -- node /full/path/to/allan-mcp-memory-code/lib/mcp-server.js
+  -- node /full/path/to/allan-mcp-memory-code/dist/mcp-server.js
 ```
 
 **Cloud (OpenRouter):**
@@ -136,7 +136,7 @@ claude mcp add allan-memory \
   -e EMBEDDER_API_URL=https://openrouter.ai/api/v1 \
   -e EMBEDDER_API_KEY=sk-or-v1-your-key-here \
   -e EMBEDDER_MODEL=openai/text-embedding-3-small \
-  -- node /full/path/to/allan-mcp-memory-code/lib/mcp-server.js
+  -- node /full/path/to/allan-mcp-memory-code/dist/mcp-server.js
 ```
 
 > 💡 Replace `/full/path/to/allan-mcp-memory-code` with your actual path.
@@ -159,7 +159,7 @@ Add to VS Code `settings.json` (Cmd+Shift+P → "Preferences: Open User Settings
   "claude.mcpServers": {
     "allan-memory": {
       "command": "node",
-      "args": ["/full/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/full/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "http://localhost:11435/v1",
@@ -204,7 +204,7 @@ Add to VS Code `settings.json`:
   "claude.mcpServers": {
     "allan-memory": {
       "command": "node",
-      "args": ["/full/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/full/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "https://openrouter.ai/api/v1",
@@ -242,7 +242,7 @@ Add to VS Code `settings.json`:
   "claude.mcpServers": {
     "allan-memory": {
       "command": "node",
-      "args": ["/full/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/full/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "http://localhost:11435/v1",
@@ -461,8 +461,13 @@ auth: none
 Allan Memory includes a CLI for automation and Claude Code hooks:
 
 ```bash
-# Install globally (optional)
-cd allan-mcp-memory-code && npm link
+# Install globally
+cd allan-mcp-memory-code
+npm install        # Install deps + auto-build
+npm link           # Link globally
+
+# Or manual build
+npm run build      # Compile lib/ → dist/
 
 # Commands
 allan-memory observe-read --file <path>   # Record file read
@@ -471,9 +476,11 @@ allan-memory recall <query>               # Search memories
 allan-memory status                       # Check connection
 ```
 
+> 💡 The CLI uses pre-compiled code (`dist/`) - no babel needed at runtime!
+
 ### Claude Code Hooks (Auto-Memory)
 
-Add to `.claude/settings.json` to auto-remember files:
+Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edits:
 
 ```json
 {
@@ -481,17 +488,27 @@ Add to `.claude/settings.json` to auto-remember files:
     "PostToolUse": [
       {
         "matcher": "Read",
-        "hooks": [{
-          "type": "command",
-          "command": "allan-memory observe-read --file \"${tool.input.file_path}\" --quiet"
-        }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "allan-memory",
+            "args": ["observe-read", "--file", "${tool_input.file_path}", "--quiet"],
+            "async": true,
+            "timeout": 30
+          }
+        ]
       },
       {
-        "matcher": "Edit|Write|Create",
-        "hooks": [{
-          "type": "command",
-          "command": "allan-memory observe-edit --file \"${tool.input.file_path}\" --quiet"
-        }]
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "allan-memory",
+            "args": ["observe-edit", "--file", "${tool_input.file_path}", "--quiet"],
+            "async": true,
+            "timeout": 60
+          }
+        ]
       }
     ]
   }
@@ -501,9 +518,14 @@ Add to `.claude/settings.json` to auto-remember files:
 This automatically stores file summaries when Claude reads or edits files.
 
 **Requirements:**
-- `npm link` in allan-memory directory (or use full path)
+- `npm install && npm link` in allan-memory directory
 - FalkorDB running (`docker compose up falkordb -d`)
-- Set `FALKORDB_URI=redis://localhost:6380` in environment
+- Set `FALKORDB_URI=redis://localhost:6380` in your shell profile (`~/.zshrc` or `~/.bash_profile`)
+
+**CLI Options:**
+- `--quiet` - Suppress console output (recommended for hooks)
+- `--verbose` - Show detailed output (for debugging)
+- `--group <id>` - Override auto-detected project group
 
 ## Don't Save
 - Trivial ("user said hi")
@@ -590,7 +612,7 @@ Add to `~/.openclaw/openclaw.json`:
   "mcpServers": {
     "allan-memory": {
       "command": "node",
-      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "https://openrouter.ai/api/v1",
@@ -633,7 +655,7 @@ Add to Cline MCP settings (`cline_mcp_settings.json`):
   "mcpServers": {
     "allan-memory": {
       "command": "node",
-      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "http://localhost:11435/v1",
@@ -654,7 +676,7 @@ Add to Cline MCP settings (`cline_mcp_settings.json`):
   "mcpServers": {
     "allan-memory": {
       "command": "node",
-      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "https://openrouter.ai/api/v1",
@@ -750,7 +772,7 @@ Add to Kilo Code MCP settings:
     "allan-memory": {
       "type": "stdio",
       "command": "node",
-      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "http://localhost:11435/v1",
@@ -772,7 +794,7 @@ Add to Kilo Code MCP settings:
     "allan-memory": {
       "type": "stdio",
       "command": "node",
-      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "https://openrouter.ai/api/v1",
@@ -865,7 +887,7 @@ Add to Windsurf MCP settings (`~/.codeium/windsurf/mcp_config.json`):
   "mcpServers": {
     "allan-memory": {
       "command": "node",
-      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "http://localhost:11435/v1",
@@ -886,7 +908,7 @@ Add to Windsurf MCP settings (`~/.codeium/windsurf/mcp_config.json`):
   "mcpServers": {
     "allan-memory": {
       "command": "node",
-      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "args": ["/path/to/allan-mcp-memory-code/dist/mcp-server.js"],
       "env": {
         "FALKORDB_URI": "redis://localhost:6380",
         "LLM_API_URL": "https://openrouter.ai/api/v1",
