@@ -480,7 +480,11 @@ allan-memory status                       # Check connection
 
 ### Claude Code Hooks (Auto-Memory)
 
-Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edits:
+Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edits.
+
+> **Important:** Hooks don't inherit MCP server env vars. Use the `env` command wrapper to pass env vars inline.
+
+#### Option A - Cloud (OpenRouter)
 
 ```json
 {
@@ -491,8 +495,22 @@ Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edi
         "hooks": [
           {
             "type": "command",
-            "command": "allan-memory",
-            "args": ["observe-read", "--file", "${tool_input.file_path}", "--quiet"],
+            "command": "env",
+            "args": [
+              "FALKORDB_URI=redis://localhost:6380",
+              "FALKORDB_GRAPH_NAME=allan_memory",
+              "LLM_API_URL=https://openrouter.ai/api/v1",
+              "LLM_API_KEY=sk-or-v1-your-key-here",
+              "LLM_MODEL=qwen/qwen-2.5-7b-instruct",
+              "EMBEDDER_API_URL=https://openrouter.ai/api/v1",
+              "EMBEDDER_API_KEY=sk-or-v1-your-key-here",
+              "EMBEDDER_MODEL=openai/text-embedding-3-small",
+              "allan-memory",
+              "observe-read",
+              "--file",
+              "${tool_input.file_path}",
+              "--quiet"
+            ],
             "async": true,
             "timeout": 30
           }
@@ -503,8 +521,85 @@ Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edi
         "hooks": [
           {
             "type": "command",
-            "command": "allan-memory",
-            "args": ["observe-edit", "--file", "${tool_input.file_path}", "--quiet"],
+            "command": "env",
+            "args": [
+              "FALKORDB_URI=redis://localhost:6380",
+              "FALKORDB_GRAPH_NAME=allan_memory",
+              "LLM_API_URL=https://openrouter.ai/api/v1",
+              "LLM_API_KEY=sk-or-v1-your-key-here",
+              "LLM_MODEL=qwen/qwen-2.5-7b-instruct",
+              "EMBEDDER_API_URL=https://openrouter.ai/api/v1",
+              "EMBEDDER_API_KEY=sk-or-v1-your-key-here",
+              "EMBEDDER_MODEL=openai/text-embedding-3-small",
+              "allan-memory",
+              "observe-edit",
+              "--file",
+              "${tool_input.file_path}",
+              "--quiet"
+            ],
+            "async": true,
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### Option B - Full Offline (Local Ollama)
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "env",
+            "args": [
+              "FALKORDB_URI=redis://localhost:6380",
+              "FALKORDB_GRAPH_NAME=allan_memory",
+              "LLM_API_URL=http://localhost:11435/v1",
+              "LLM_API_KEY=ollama",
+              "LLM_MODEL=qwen2.5:7b-instruct",
+              "EMBEDDER_API_URL=http://localhost:11435/v1",
+              "EMBEDDER_API_KEY=ollama",
+              "EMBEDDER_MODEL=nomic-embed-text",
+              "allan-memory",
+              "observe-read",
+              "--file",
+              "${tool_input.file_path}",
+              "--quiet"
+            ],
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "env",
+            "args": [
+              "FALKORDB_URI=redis://localhost:6380",
+              "FALKORDB_GRAPH_NAME=allan_memory",
+              "LLM_API_URL=http://localhost:11435/v1",
+              "LLM_API_KEY=ollama",
+              "LLM_MODEL=qwen2.5:7b-instruct",
+              "EMBEDDER_API_URL=http://localhost:11435/v1",
+              "EMBEDDER_API_KEY=ollama",
+              "EMBEDDER_MODEL=nomic-embed-text",
+              "allan-memory",
+              "observe-edit",
+              "--file",
+              "${tool_input.file_path}",
+              "--quiet"
+            ],
             "async": true,
             "timeout": 60
           }
@@ -520,7 +615,6 @@ This automatically stores file summaries when Claude reads or edits files.
 **Requirements:**
 - `npm install && npm link` in allan-memory directory
 - FalkorDB running (`docker compose up falkordb -d`)
-- Set `FALKORDB_URI=redis://localhost:6380` in your shell profile (`~/.zshrc` or `~/.bash_profile`)
 
 **CLI Options:**
 - `--quiet` - Suppress console output (recommended for hooks)
