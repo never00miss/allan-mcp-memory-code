@@ -1,6 +1,6 @@
 ---
 name: allan-memory
-description: Persistent knowledge graph memory for AI coding assistants. Search, store, and retrieve codebase knowledge across sessions.
+description: Persistent knowledge graph memory for AI coding assistants. Search with INLINE FRESHNESS, store structured memories, track file changes.
 metadata:
   {
     "openclaw":
@@ -23,66 +23,99 @@ metadata:
   }
 ---
 
-# Allan Memory - Persistent Knowledge Graph for Coding
+# Allan Memory v2 - Persistent Knowledge Graph for Coding
 
-Allan Memory gives you persistent memory across conversations. It stores entities and relationships in a knowledge graph (FalkorDB) so you can:
+Allan Memory gives you persistent memory across conversations with **inline freshness checking**. It stores entities in a knowledge graph (FalkorDB) so you can:
 
 - **Remember** codebase structure, functions, patterns, and decisions
-- **Search** your stored knowledge instead of re-reading files
+- **Search** with automatic freshness status on each result
+- **Detect stale** memories when source files change
 - **Save 74-94% tokens** compared to re-reading files every time
 
-## MCP Tools Available
-
-When connected via MCP, you have these tools:
+## MCP Tools (v2)
 
 | Tool | Purpose |
 |------|---------|
-| `add_memory` | Store new knowledge (file summaries, functions, patterns) |
-| `search_nodes` | Find entities by semantic search |
-| `search_facts` | Find relationships between entities |
-| `check_freshness` | Verify if stored knowledge is stale |
-| `regenerate_file` | Auto-update knowledge after editing a file |
-| `get_episodes` | List recent memory entries |
-| `delete_episode` | Remove stale entries |
+| `register_project` | Register project root for path resolution (call once) |
+| `remember` | Store memory with structured fields (type, scope, content) |
+| `recall` | Search with **INLINE FRESHNESS** - check `freshness.stale`! |
+| `relate` | Find relationships between entities |
+| `list` | Enumerate stored entities by type |
+| `refresh` | Re-extract entities from a stale file |
+
+## Key Feature: Inline Freshness
+
+`recall` returns freshness info on each result:
+
+```json
+{
+  "type": "func",
+  "scope": "AuthService.login",
+  "freshness": {
+    "stale": true,
+    "reason": "file_modified",
+    "age_hours": 24.5
+  }
+}
+```
+
+- `stale: false` → Memory is fresh, trust it
+- `stale: true` → Source file modified → Call `refresh` before trusting
 
 ## Workflow
 
-### First time exploring code:
+### Session Start
 ```
-1. search_nodes("index:[project]") → Check if project is indexed
-2. Empty? → Read files → add_memory() for each important file/function
-3. Found? → Use cached knowledge directly
-```
-
-### After editing a file:
-```
-regenerate_file({ file_path: "src/auth.js", project_root: "/path/to/project", group_id: "my-project" })
+register_project({
+  group_id: "my-project",
+  project_root: "/path/to/project"
+})
 ```
 
-### Before using cached knowledge:
+### Before Reading Files
 ```
-check_freshness({ query: "auth functions", group_id: "my-project", max_age_hours: 24 })
-→ FRESH? Use it
-→ STALE? Run regenerate_file or re-read and add_memory
+recall({ query: "auth", group_id: "my-project" })
+→ Check freshness.stale on results
+→ If stale, call refresh()
 ```
 
-## Naming Convention
+### After Understanding Code
+```
+remember({
+  group_id: "my-project",
+  type: "func",
+  scope: "AuthService.login",
+  content: "func: login(email, pass) → User | validates creds",
+  source_file: "src/auth.js"
+})
+```
 
-Always use this format: `[type]:[project]:[scope]`
+### When Results Are Stale
+```
+refresh({
+  file_path: "src/auth.js",
+  group_id: "my-project"
+})
+```
 
-| Type | Example | Use For |
-|------|---------|---------|
-| index | `index:my-project` | Project overview (create FIRST!) |
-| file | `file:my-project:src/auth.js` | File summary |
-| func | `func:my-project:auth.js@login` | Function signature |
-| api | `api:my-project:POST /auth` | API endpoint |
-| pattern | `pattern:my-project:error-handling` | Code pattern |
+## Entity Types
+
+| Type | Use For |
+|------|---------|
+| `file` | File summary |
+| `func` | Function signature |
+| `api` | API endpoint |
+| `arch` | Architecture |
+| `pattern` | Code pattern |
+| `task` | Task summary |
+| `debug` | Debug session |
+| `note` | General note |
+| `index` | Project overview |
 
 ## Content Templates
 
 **For files:**
 ```
-path: src/auth.js
 purpose: Authentication service
 exports: login(), logout(), validateToken()
 deps: jwt-lib, bcrypt

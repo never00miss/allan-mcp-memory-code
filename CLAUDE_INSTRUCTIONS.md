@@ -1,60 +1,126 @@
-# Allan Memory - Claude Code Instructions
+# Allan Memory - Claude Code Instructions (v2)
 
 Copy this content to your `~/.claude/CLAUDE.md` file to enable knowledge graph memory.
 
 ---
 
-## Knowledge Graph (Allan Memory)
+## Knowledge Graph (Allan Memory v2)
 
-You have access to a knowledge graph via HTTP API at `http://localhost:19089`.
-Use it to persist and recall information about codebases across sessions.
+You have persistent knowledge graph memory via MCP. Key feature: **INLINE FRESHNESS** on search results.
 
-### When to READ from the knowledge graph:
-- **Before answering questions about a codebase**, search nodes and facts to check for prior knowledge
-- **When starting work on a known project**, retrieve existing context about architecture, patterns, and decisions
-- Use the repo/project name as the `group_id` to namespace data per project
+### Tools
 
-### When to WRITE to the knowledge graph:
-- **After analyzing a new repo or module**, store discovered architecture, tech stack, key patterns
-- **When you discover important design decisions or non-obvious patterns**, store them immediately
-- **After debugging complex issues**, store the root cause and resolution
-- **When the user explicitly asks you to remember something**
+| Tool | Purpose |
+|------|---------|
+| `register_project` | Register project root (call once per project) |
+| `remember` | Store memory with structured fields |
+| `recall` | Search with inline freshness |
+| `relate` | Find relationships |
+| `list` | Enumerate by type |
+| `refresh` | Re-extract from stale file |
 
-### API Commands:
+### Start of Session
 
-**Check if service is running:**
-```bash
-curl -s http://localhost:19089/v1/health | jq .
+```
+register_project({
+  group_id: "my-project",
+  project_root: "/absolute/path/to/project"
+})
 ```
 
-**Add memory (store knowledge):**
-```bash
-curl -s -X POST http://localhost:19089/v1/memory \
-  -H "Content-Type: application/json" \
-  -d '{"name":"<title>","episode_body":"<knowledge to store>","group_id":"<project-name>"}' | jq .
+### Before Reading Files
+
+**ALWAYS** call `recall` before `grep_search`, `file_search`, or `read_file`:
+
+```
+recall({ query: "auth login", group_id: "my-project" })
 ```
 
-**Search nodes (find entities):**
-```bash
-curl -s -X POST http://localhost:19089/v1/memory/search/nodes \
-  -H "Content-Type: application/json" \
-  -d '{"query":"<search term>","group_ids":["<project-name>"],"limit":10}' | jq .
+**Check `freshness.stale` on each result:**
+- `false` → Trust the memory
+- `true` → File was modified → Call `refresh` first
+
+### After Understanding Code
+
+```
+remember({
+  group_id: "my-project",
+  type: "func",           // file|func|api|arch|pattern|task|debug|note|index
+  scope: "AuthService.login",
+  content: "func: login(email, pass) → User | validates creds, returns JWT",
+  source_file: "src/services/auth.js",  // optional, enables freshness
+  source_lines: [45, 89]                // optional
+})
 ```
 
-**Search facts (find relationships):**
-```bash
-curl -s -X POST http://localhost:19089/v1/memory/search/facts \
-  -H "Content-Type: application/json" \
-  -d '{"query":"<search term>","group_ids":["<project-name>"],"limit":10}' | jq .
+### When Results Are Stale
+
+```
+refresh({
+  file_path: "src/services/auth.js",
+  group_id: "my-project"
+})
 ```
 
-**Get recent episodes:**
-```bash
-curl -s "http://localhost:19089/v1/memory/episodes?group_id=<project-name>&limit=10" | jq .
+### List What's Stored
+
+```
+list({ group_id: "my-project", type: "file" })
 ```
 
-### Best Practices:
-- Always search before adding to avoid duplicates
-- Use project/repo name as `group_id` for namespacing (e.g., "allan-memory", "my-web-app")
-- Store structured, useful knowledge — not trivial facts or code that can be read from files
-- Focus on: architectural decisions, non-obvious constraints, cross-module dependencies, gotchas, debugging insights
+### Entity Types
+
+| Type | Use For |
+|------|---------|
+| `file` | File summary |
+| `func` | Function signature |
+| `api` | API endpoint |
+| `arch` | Architecture |
+| `pattern` | Code pattern |
+| `task` | Task summary |
+| `debug` | Debug session |
+| `note` | General note |
+| `index` | Project overview |
+
+### When to Write
+
+| Action | type | scope |
+|--------|------|-------|
+| Read file | file | path |
+| Read function | func | Class.method |
+| Debug issue | debug | symptom |
+| Make decision | arch | topic |
+| Complete task | task | what |
+
+### Content Guidelines
+
+- Max 5 lines
+- Subject + verb + object
+- Include identifiers (paths, names)
+- Drop filler ("I discovered", "The code")
+
+### Example Session
+
+```
+// 1. Register project
+register_project({ group_id: "my-app", project_root: "/Users/me/my-app" })
+
+// 2. Search before reading
+recall({ query: "authentication", group_id: "my-app" })
+→ [{ type: "func", scope: "auth.js@login", freshness: { stale: false } }]
+
+// 3. If stale, refresh
+refresh({ file_path: "src/auth.js", group_id: "my-app" })
+
+// 4. Remember new understanding
+remember({
+  group_id: "my-app",
+  type: "func",
+  scope: "UserService.create",
+  content: "func: create(data) → User | validates, hashes pass, saves to DB",
+  source_file: "src/services/user.js"
+})
+
+// 5. List what's stored
+list({ group_id: "my-app" })
+```

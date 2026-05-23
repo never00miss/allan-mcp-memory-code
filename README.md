@@ -354,44 +354,62 @@ add_memory(
 
 You have persistent memory via MCP. **Default: WRITE.** If unsure whether to save, save.
 
-## Tools
-- `search_nodes` — find entities (search "index:[project]" FIRST)
-- `search_facts` — find relationships
-- `check_freshness` — verify memories aren't stale (use if code may have changed)
-- `regenerate_file` — auto-extract entities from source file (use after editing)
-- `add_memory` — store (USE LIBERALLY)
-- `get_episodes` — list recent
-- `delete_episode` — remove stale
+## Tools (v2)
 
-## Naming Convention (TOKEN-EFFICIENT)
+| Tool | Purpose |
+|------|---------|
+| `register_project` | Register project root for path resolution (call once per project) |
+| `remember` | Store a memory with structured fields |
+| `recall` | Search with **INLINE FRESHNESS** (check `freshness.stale` on results!) |
+| `relate` | Find relationships between entities |
+| `list` | Enumerate stored entities by type |
+| `refresh` | Re-extract entities from a file (use when `recall` returns stale) |
 
-Format: `[type]:[project]:[scope]`
+### Key Feature: Inline Freshness
 
-| Type | Example | Use For |
-|------|---------|---------|
-| index | index:my-project | Project overview (CREATE FIRST!) |
-| file | file:my-project:src/auth.js | File summary |
-| func | func:my-project:UserService.login | Function signature |
-| api | api:my-project:POST /auth/login | API endpoint |
-| arch | arch:my-project:overview | Architecture |
-| pattern | pattern:my-project:error-handling | Code pattern |
-| task | task:my-project:fix-login | Task summary |
-| debug | debug:my-project:auth-500 | Debug session |
+`recall` returns freshness info on each result:
+
+```json
+{
+  "type": "func",
+  "scope": "AuthService.login",
+  "freshness": {
+    "stale": true,
+    "reason": "file_modified",
+    "file_mtime": "2024-01-15T10:30:00Z",
+    "age_hours": 24.5
+  }
+}
+```
+
+- `stale: false` → Memory is fresh, trust it
+- `stale: true` → Source file was modified → Call `refresh` before trusting
+
+### Workflow
+
+1. **Start of project:** `register_project({ group_id: "my-app", project_root: "/path/to/my-app" })`
+2. **Before reading files:** `recall({ query: "auth", group_id: "my-app" })`
+3. **If results are stale:** `refresh({ file_path: "src/auth.js", group_id: "my-app" })`
+4. **After understanding code:** `remember({ type: "func", scope: "login", content: "...", group_id: "my-app" })`
+
+## Entity Types
+
+| Type | Use For | Example scope |
+|------|---------|---------------|
+| `index` | Project overview | (empty or "overview") |
+| `file` | File summary | "src/services/auth.js" |
+| `func` | Function signature | "AuthService.login" |
+| `api` | API endpoint | "POST /auth/login" |
+| `arch` | Architecture | "overview" |
+| `pattern` | Code pattern | "error-handling" |
+| `task` | Task summary | "fix-login-bug" |
+| `debug` | Debug session | "auth-500-error" |
+| `note` | General note | "important-decision" |
 
 ## Content Templates
 
-**INDEX (create FIRST per project):**
-```
-files: auth.js, api.js, models/user.js
-components: LoginForm, Header, Footer
-routes: /, /api/*, /auth/*
-patterns: JWT auth, Repository pattern
-key-funcs: login(), validateToken()
-```
-
 **FILE:**
 ```
-path: src/services/auth.js
 purpose: Authentication service
 exports: login(), logout(), validateToken()
 deps: jwt-lib, redis
@@ -403,7 +421,6 @@ lines: 245
 func: login(email: str, pass: str) → User|null
 does: Validates credentials, returns user
 calls: hashPass(), findUser()
-called-by: AuthController.handle()
 ```
 
 **API:**
@@ -414,26 +431,6 @@ res: { token: str, user: User }
 auth: none
 ```
 
-## Hard Rules
-
-**Namespacing:** every `add_memory` MUST include `group_id` = project name (kebab-case).
-
-**Search before answer:** `search_nodes("index:[project]")` FIRST. Empty = explore, then save.
-
-**Write after every action.** One action = one `add_memory` call.
-
-| Action | Save |
-|---|---|
-| bash/shell | command + output + revealed |
-| grep/search | pattern + matches + files |
-| ls/tree | path + structure |
-| read file | path + purpose + exports |
-| read function | name + params + return + does |
-| edit/create | path + what changed + why |
-| debug | symptom + root cause + fix |
-| plan | the plan summarized |
-| task done | what + how + gotchas |
-
 ## Compression Rules
 
 - **Max 5 lines.** Split if longer.
@@ -441,11 +438,16 @@ auth: none
 - **Drop filler.** No "I discovered". Just facts.
 - **Include identifiers.** File paths, function names, routes.
 
-## Save Cadence
+## When to Remember
 
-`explore → save → explore → save → plan → save → execute → save → done → save`
-
-Every 3-5 tool calls: "Did I save?" If no → save NOW.
+| Action | Save |
+|--------|------|
+| Read file | type: file, scope: path |
+| Read function | type: func, scope: Class.method |
+| Edit/create | type: file or func |
+| Debug | type: debug (include root cause + fix) |
+| Plan | type: arch or note |
+| Task done | type: task (include gotchas) |
 
 ## Workflow
 
