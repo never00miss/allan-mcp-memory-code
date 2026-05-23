@@ -128,11 +128,11 @@ npm link
 
 #### Step 2: Setup Claude Code Config
 
-Copy the ready-made config files from `coding-plan/`:
+Copy the ready-made config files from `extensions/`:
 
 ```bash
 # Copy hooks + CLAUDE.md
-cp -r coding-plan/.claude ~/.claude
+cp -r extensions/.claude ~/.claude
 chmod +x ~/.claude/hooks/observe-read.sh ~/.claude/hooks/observe-edit.sh
 ```
 
@@ -295,10 +295,10 @@ Add to `~/.claude/settings.json`:
 
 #### Step 2: Add Instructions to CLAUDE.md
 
-Copy the ready-made instructions from `coding-plan/.claude/CLAUDE.md` to `~/.claude/CLAUDE.md`:
+Copy the ready-made instructions from `extensions/.claude/CLAUDE.md` to `~/.claude/CLAUDE.md`:
 
 ```bash
-cp coding-plan/.claude/CLAUDE.md ~/.claude/CLAUDE.md
+cp extensions/.claude/CLAUDE.md ~/.claude/CLAUDE.md
 ```
 
 If you have an existing `~/.claude/CLAUDE.md`, append the content manually.
@@ -463,12 +463,12 @@ Add to Cline MCP settings (`cline_mcp_settings.json`):
 
 #### Step 2: Add Custom Instructions
 
-Go to **Cline Settings → Custom Instructions** and add the content from `coding-plan/.claude/CLAUDE.md`.
+Go to **Cline Settings → Custom Instructions** and add the content from `extensions/.claude/CLAUDE.md`.
 
 Or copy it directly:
 
 ```bash
-cat coding-plan/.claude/CLAUDE.md
+cat extensions/.claude/CLAUDE.md
 ```
 
 ---
