@@ -456,6 +456,55 @@ auth: none
 3. Found? → Use results, DON'T re-read files
 4. After any action → save with proper naming
 
+## CLI Commands
+
+Allan Memory includes a CLI for automation and Claude Code hooks:
+
+```bash
+# Install globally (optional)
+cd allan-mcp-memory-code && npm link
+
+# Commands
+allan-memory observe-read --file <path>   # Record file read
+allan-memory observe-edit --file <path>   # Record file edit  
+allan-memory recall <query>               # Search memories
+allan-memory status                       # Check connection
+```
+
+### Claude Code Hooks (Auto-Memory)
+
+Add to `.claude/settings.json` to auto-remember files:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [{
+          "type": "command",
+          "command": "allan-memory observe-read --file \"${tool.input.file_path}\" --quiet"
+        }]
+      },
+      {
+        "matcher": "Edit|Write|Create",
+        "hooks": [{
+          "type": "command",
+          "command": "allan-memory observe-edit --file \"${tool.input.file_path}\" --quiet"
+        }]
+      }
+    ]
+  }
+}
+```
+
+This automatically stores file summaries when Claude reads or edits files.
+
+**Requirements:**
+- `npm link` in allan-memory directory (or use full path)
+- FalkorDB running (`docker compose up falkordb -d`)
+- Set `FALKORDB_URI=redis://localhost:6380` in environment
+
 ## Don't Save
 - Trivial ("user said hi")
 - Duplicates (search first)
