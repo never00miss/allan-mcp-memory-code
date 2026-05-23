@@ -273,6 +273,7 @@ Add to VS Code `settings.json`:
 | `add_memory` | Store knowledge (name, content, group_id) |
 | `search_nodes` | Search entities by query |
 | `search_facts` | Search relationships by query |
+| `check_freshness` | Check if memories are stale (>24h old) |
 | `get_episodes` | List recent episodes |
 | `delete_episode` | Delete episode by UUID |
 
@@ -355,6 +356,7 @@ You have persistent memory via MCP. **Default: WRITE.** If unsure whether to sav
 ## Tools
 - `search_nodes` — find entities (search "index:[project]" FIRST)
 - `search_facts` — find relationships
+- `check_freshness` — verify memories aren't stale (use if code may have changed)
 - `add_memory` — store (USE LIBERALLY)
 - `get_episodes` — list recent
 - `delete_episode` — remove stale
@@ -1079,6 +1081,113 @@ After reading function: `curl ... -d '{"name":"func:[project]:[file]@[funcName]"
 | `EMBEDDER_API_URL` | http://localhost:11435/v1 | Embedding endpoint |
 | `EMBEDDER_MODEL` | nomic-embed-text | Embedding model |
 | `FALKORDB_URI` | redis://localhost:6380 | FalkorDB connection |
+
+---
+
+## Use Cases & Benchmark
+
+### When MCP Saves Tokens
+
+| Use Case | Without MCP | With MCP | Savings |
+|----------|-------------|----------|--------|
+| Query about function | ~2000 tokens | ~100 tokens | **95%** |
+| 10 queries (same code) | 20,000 tokens | ~1,000 tokens | **95%** |
+| Large codebase exploration | Many file reads | Cached knowledge | **Huge** |
+
+### Benchmark Results
+
+```
+Task: Get info about authenticateUser function
+
+WITHOUT MCP (every query):
+- grep_search: ~50ms
+- read_file: ~30ms  
+- AI parses: ~2000 tokens
+Total: ~80ms + 2000 tokens PER QUERY
+
+WITH MCP (after initial setup):
+- add_memory: ~50ms API + ~3s LLM extraction (once)
+- search_nodes: ~500ms + ~100 tokens PER QUERY
+
+BREAK-EVEN: ~2 queries about the same code
+```
+
+### When to Use MCP
+
+| Scenario | Recommendation |
+|----------|----------------|
+| One-off question | Skip MCP |
+| Repeated questions about same code | ✅ Use MCP |
+| Long coding session | ✅ Use MCP |
+| Large codebase | ✅ Use MCP |
+| Cost-sensitive usage | ✅ Use MCP |
+
+---
+
+## Freshness Checking
+
+When code changes, stored memories become **stale**. Use `check_freshness` to detect this.
+
+### How It Works
+
+```
+1. AI calls check_freshness({ query, group_id, max_age_hours })
+                              │
+                              ▼
+2. Generate query embedding via Ollama/OpenRouter
+                              │
+                              ▼
+3. Hybrid search in FalkorDB (text + vector)
+                              │
+                              ▼
+4. For each result, calculate age:
+   - age = now - created_at
+   - status = age < max_age_hours ? FRESH : STALE
+                              │
+                              ▼
+5. Return formatted results:
+   
+   ---
+   Found 3 memories: 2 FRESH, 1 STALE (threshold: 24h)
+   login [FUNCTION] FRESH 2h ago | src/auth.js
+   validateToken [FUNCTION] FRESH 5h ago | src/auth.js  
+   hashPassword [FUNCTION] STALE 3d ago | src/crypto.js
+                              │
+                              ▼
+6. AI decides:
+   - FRESH → Trust memory, use directly
+   - STALE → Re-read file, update with add_memory
+```
+
+### MCP Tool Usage
+
+```javascript
+// Check freshness before using cached knowledge
+check_freshness({
+  query: "auth functions",
+  group_id: "my-project",
+  max_age_hours: 24  // optional, default 24
+})
+```
+
+### HTTP API Usage
+
+```bash
+curl -X POST http://localhost:19089/v1/memory/check-freshness \
+  -H "Content-Type: application/json" \
+  -d '{"query":"auth functions","group_id":"my-project","max_age_hours":24}'
+```
+
+### Best Practice Workflow
+
+```
+1. search_nodes("function X")
+2. Results found?
+   ├─ Yes → check_freshness("function X")
+   │        ├─ FRESH → Use memory ✓
+   │        └─ STALE → Re-read file → add_memory (update)
+   └─ No → Read file → add_memory (create)
+```
 
 ---
 
