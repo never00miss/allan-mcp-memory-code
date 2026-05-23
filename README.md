@@ -501,6 +501,75 @@ To make Claude use memory tools automatically, use these phrases:
 
 ---
 
+### OpenClaw
+
+Allan Memory integrates with [OpenClaw](https://github.com/openclaw/openclaw) as a skill.
+
+#### Option 1: Install Skill from GitHub
+
+```bash
+openclaw skills install git:never00miss/allan-mcp-memory-code@main --as allan-memory
+```
+
+#### Option 2: Copy Skill Locally
+
+Copy the `openclaw-skill/SKILL.md` file to your OpenClaw skills directory:
+
+```bash
+mkdir -p ~/.openclaw/skills/allan-memory
+cp openclaw-skill/SKILL.md ~/.openclaw/skills/allan-memory/SKILL.md
+```
+
+#### Configure MCP Server
+
+Add to `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "skills": {
+    "entries": {
+      "allan-memory": {
+        "enabled": true,
+        "env": {
+          "FALKORDB_URI": "redis://localhost:6380"
+        }
+      }
+    }
+  },
+  "mcpServers": {
+    "allan-memory": {
+      "command": "node",
+      "args": ["/path/to/allan-mcp-memory-code/lib/mcp-server.js"],
+      "env": {
+        "FALKORDB_URI": "redis://localhost:6380",
+        "LLM_API_URL": "https://openrouter.ai/api/v1",
+        "LLM_API_KEY": "your-openrouter-key",
+        "LLM_MODEL": "qwen/qwen-2.5-7b-instruct",
+        "EMBEDDING_API_URL": "https://openrouter.ai/api/v1",
+        "EMBEDDING_API_KEY": "your-openrouter-key",
+        "EMBEDDING_MODEL": "openai/text-embedding-3-small"
+      }
+    }
+  }
+}
+```
+
+#### Available Tools in OpenClaw
+
+Once configured, you can use these tools in OpenClaw:
+
+- `add_memory` - Store knowledge (files, functions, patterns)
+- `search_nodes` - Find entities by semantic search
+- `search_facts` - Find relationships between entities
+- `check_freshness` - Verify stored knowledge isn't stale
+- `regenerate_file` - Update knowledge after file edits
+- `get_episodes` - List recent memory entries
+- `delete_episode` - Remove stale entries
+
+See `openclaw-skill/SKILL.md` for detailed usage instructions.
+
+---
+
 ### Cline (VS Code)
 
 #### Step 1: Add MCP Server
