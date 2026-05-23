@@ -262,21 +262,38 @@ Add to VS Code `settings.json`:
 #### Verify Installation
 
 1. **Replace path:** Change `/full/path/to/allan-mcp-memory-code` to your actual path
-2. **Restart VS Code** completely
-3. Type `/mcp` in Claude Code chat
-4. You should see `allan-memory` with 5 tools
+2. **Important:** The MCP path must point to `dist/mcp-server.js` (transpiled), **not** `lib/mcp-server.js` (ESM source). Using `lib/` will crash with `SyntaxError: Cannot use import statement outside a module`.
+3. **Check both config files:** Claude Code reads MCP config from two locations:
+   - `~/.claude/settings.json` (under `claude.mcpServers`)
+   - `~/.claude/mcp.json` (under `mcpServers`)
+
+   If either file has the wrong path, the MCP server will fail. Verify **both** files point to `dist/mcp-server.js`.
+
+4. **Restart VS Code** completely (Cmd+Q, not just reload window)
+5. Type `/mcp` in Claude Code chat
+6. You should see `allan-memory` with 6 tools
 
 #### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `register_project` | Register project root for path resolution and freshness |
+| `remember` | Store a memory with structured fields (type, scope, content) |
+| `recall` | Search with inline freshness (check `freshness.stale` on results!) |
+| `relate` | Find relationships between entities |
+| `list` | Enumerate stored entities by type |
+| `refresh` | Re-extract entities from a file (use when recall returns stale) |
+
+<details><summary>Legacy Tools (backward compat)</summary>
 
 | Tool | Description |
 |------|-------------|
 | `add_memory` | Store knowledge (name, content, group_id) |
 | `search_nodes` | Search entities by query |
 | `search_facts` | Search relationships by query |
-| `check_freshness` | Check if memories are stale (>24h old) |
 | `regenerate_file` | Auto-extract entities from a source file |
-| `get_episodes` | List recent episodes |
-| `delete_episode` | Delete episode by UUID |
+
+</details>
 
 ---
 
@@ -482,9 +499,78 @@ allan-memory status                       # Check connection
 
 Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edits.
 
-> **Important:** Hooks don't inherit MCP server env vars. Use the `env` command wrapper to pass env vars inline.
+> **Important:** Claude Code passes tool data via **stdin as JSON** (not as args). The hook scripts read stdin to extract `file_path`. Template variables like `${tool_input.file_path}` do **not** work in hook args.
 
-#### Option A - Cloud (OpenRouter)
+#### Step 1: Create Hook Scripts
+
+Create the directory and scripts:
+
+```bash
+mkdir -p ~/.claude/hooks
+```
+
+**`~/.claude/hooks/observe-read.sh`:**
+
+```bash
+#!/bin/bash
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null)
+
+[ -z "$FILE_PATH" ] && exit 0
+
+FALKORDB_URI=redis://localhost:6380 \
+FALKORDB_GRAPH_NAME=allan_memory \
+LLM_API_URL=YOUR_LLM_API_URL \
+LLM_API_KEY=YOUR_LLM_API_KEY \
+LLM_MODEL=YOUR_LLM_MODEL \
+EMBEDDER_API_URL=YOUR_EMBEDDER_API_URL \
+EMBEDDER_API_KEY=YOUR_EMBEDDER_API_KEY \
+EMBEDDER_MODEL=YOUR_EMBEDDER_MODEL \
+allan-memory observe-read --file "$FILE_PATH" --quiet
+```
+
+**`~/.claude/hooks/observe-edit.sh`:**
+
+```bash
+#!/bin/bash
+INPUT=$(cat)
+FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null)
+
+[ -z "$FILE_PATH" ] && exit 0
+
+FALKORDB_URI=redis://localhost:6380 \
+FALKORDB_GRAPH_NAME=allan_memory \
+LLM_API_URL=YOUR_LLM_API_URL \
+LLM_API_KEY=YOUR_LLM_API_KEY \
+LLM_MODEL=YOUR_LLM_MODEL \
+EMBEDDER_API_URL=YOUR_EMBEDDER_API_URL \
+EMBEDDER_API_KEY=YOUR_EMBEDDER_API_KEY \
+EMBEDDER_MODEL=YOUR_EMBEDDER_MODEL \
+allan-memory observe-edit --file "$FILE_PATH" --quiet
+```
+
+Then make them executable:
+
+```bash
+chmod +x ~/.claude/hooks/observe-read.sh ~/.claude/hooks/observe-edit.sh
+```
+
+#### Step 2: Replace env vars in the scripts
+
+Replace these placeholders with your actual values:
+
+| Cloud (OpenRouter) | Local (Ollama) |
+|---|---|
+| `LLM_API_URL=https://openrouter.ai/api/v1` | `LLM_API_URL=http://localhost:11435/v1` |
+| `LLM_API_KEY=sk-or-v1-your-key-here` | `LLM_API_KEY=ollama` |
+| `LLM_MODEL=qwen/qwen-2.5-7b-instruct` | `LLM_MODEL=qwen2.5:7b-instruct` |
+| `EMBEDDER_API_URL=https://openrouter.ai/api/v1` | `EMBEDDER_API_URL=http://localhost:11435/v1` |
+| `EMBEDDER_API_KEY=sk-or-v1-your-key-here` | `EMBEDDER_API_KEY=ollama` |
+| `EMBEDDER_MODEL=openai/text-embedding-3-small` | `EMBEDDER_MODEL=nomic-embed-text` |
+
+#### Step 3: Add to settings.json
+
+Add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -495,23 +581,7 @@ Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edi
         "hooks": [
           {
             "type": "command",
-            "command": "env",
-            "args": [
-              "FALKORDB_URI=redis://localhost:6380",
-              "FALKORDB_GRAPH_NAME=allan_memory",
-              "LLM_API_URL=https://openrouter.ai/api/v1",
-              "LLM_API_KEY=sk-or-v1-your-key-here",
-              "LLM_MODEL=qwen/qwen-2.5-7b-instruct",
-              "EMBEDDER_API_URL=https://openrouter.ai/api/v1",
-              "EMBEDDER_API_KEY=sk-or-v1-your-key-here",
-              "EMBEDDER_MODEL=openai/text-embedding-3-small",
-              "allan-memory",
-              "observe-read",
-              "--file",
-              "${tool_input.file_path}",
-              "--quiet"
-            ],
-            "async": true,
+            "command": "/Users/YOUR_USER/.claude/hooks/observe-read.sh",
             "timeout": 30
           }
         ]
@@ -521,23 +591,7 @@ Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edi
         "hooks": [
           {
             "type": "command",
-            "command": "env",
-            "args": [
-              "FALKORDB_URI=redis://localhost:6380",
-              "FALKORDB_GRAPH_NAME=allan_memory",
-              "LLM_API_URL=https://openrouter.ai/api/v1",
-              "LLM_API_KEY=sk-or-v1-your-key-here",
-              "LLM_MODEL=qwen/qwen-2.5-7b-instruct",
-              "EMBEDDER_API_URL=https://openrouter.ai/api/v1",
-              "EMBEDDER_API_KEY=sk-or-v1-your-key-here",
-              "EMBEDDER_MODEL=openai/text-embedding-3-small",
-              "allan-memory",
-              "observe-edit",
-              "--file",
-              "${tool_input.file_path}",
-              "--quiet"
-            ],
-            "async": true,
+            "command": "/Users/YOUR_USER/.claude/hooks/observe-edit.sh",
             "timeout": 60
           }
         ]
@@ -547,74 +601,14 @@ Add to `~/.claude/settings.json` to auto-remember files when Claude reads or edi
 }
 ```
 
-#### Option B - Full Offline (Local Ollama)
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "env",
-            "args": [
-              "FALKORDB_URI=redis://localhost:6380",
-              "FALKORDB_GRAPH_NAME=allan_memory",
-              "LLM_API_URL=http://localhost:11435/v1",
-              "LLM_API_KEY=ollama",
-              "LLM_MODEL=qwen2.5:7b-instruct",
-              "EMBEDDER_API_URL=http://localhost:11435/v1",
-              "EMBEDDER_API_KEY=ollama",
-              "EMBEDDER_MODEL=nomic-embed-text",
-              "allan-memory",
-              "observe-read",
-              "--file",
-              "${tool_input.file_path}",
-              "--quiet"
-            ],
-            "async": true,
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "env",
-            "args": [
-              "FALKORDB_URI=redis://localhost:6380",
-              "FALKORDB_GRAPH_NAME=allan_memory",
-              "LLM_API_URL=http://localhost:11435/v1",
-              "LLM_API_KEY=ollama",
-              "LLM_MODEL=qwen2.5:7b-instruct",
-              "EMBEDDER_API_URL=http://localhost:11435/v1",
-              "EMBEDDER_API_KEY=ollama",
-              "EMBEDDER_MODEL=nomic-embed-text",
-              "allan-memory",
-              "observe-edit",
-              "--file",
-              "${tool_input.file_path}",
-              "--quiet"
-            ],
-            "async": true,
-            "timeout": 60
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+> Replace `/Users/YOUR_USER` with your actual home directory path.
 
 This automatically stores file summaries when Claude reads or edits files.
 
 **Requirements:**
 - `npm install && npm link` in allan-memory directory
 - FalkorDB running (`docker compose up falkordb -d`)
+- Python 3 installed (used to parse stdin JSON)
 
 **CLI Options:**
 - `--quiet` - Suppress console output (recommended for hooks)
@@ -1577,8 +1571,12 @@ docker compose up falkordb ollama ollama-init -d
 # Run locally
 cp .env.example .env
 npm install
-npm run dev
+npm run build   # Compile lib/ → dist/ (Babel transpilation)
+npm run dev     # Dev server with nodemon (auto-transpiles via @babel/register)
+npm start       # Production (runs transpiled dist/)
 ```
+
+> **Note:** The `lib/` source uses ES module `import` syntax. Always run `npm run build` before `npm start`. The `dev` script handles transpilation on-the-fly via `@babel/register`.
 
 ---
 
