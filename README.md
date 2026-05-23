@@ -525,66 +525,12 @@ Add to Kilo Code MCP settings:
 
 #### Step 2: Add Custom Instructions
 
-Go to **Kilo Code Settings → Custom Instructions** and add:
+Go to **Kilo Code Settings → Custom Instructions** and add the content from `extensions/.claude/CLAUDE.md`.
 
-```markdown
-# Allan Memory (Graphiti MCP)
+Or copy it directly:
 
-## ⚠️ CRITICAL: Memory First (No Exceptions)
-
-**BEFORE** using `grep_search`, `file_search`, `read_file`, `ls`, `find`, or `semantic_search`:
-
-1. **ALWAYS** call `search_nodes("[project] [topic]")` FIRST
-2. Results found? → **USE THEM**, skip file operations
-3. Empty? → Proceed with file search → **SAVE results** with `add_memory`
-
-```
-❌ WRONG: grep_search → read_file → answer
-✅ RIGHT: search_nodes → (if empty) grep_search → add_memory → answer
-```
-
-**SKIP THIS = WASTE TOKENS. VIOLATION = BAD.**
-
----
-
-You have persistent memory via MCP. **Default: WRITE.** If unsure → save.
-
-## Naming Convention: [type]:[project]:[scope]
-
-| Type | Example | Use For |
-|------|---------|---------|
-| index | index:my-project | Project overview (CREATE FIRST!) |
-| file | file:my-project:src/auth.js | File summary |
-| func | func:my-project:Service.method | Function signature |
-| api | api:my-project:POST /auth | API endpoint |
-
-## Content Templates
-
-**INDEX:** `files: a.js, b.js | components: X, Y | routes: /, /api`
-**FILE:** `path: x.js | purpose: Auth | exports: login(), logout()`
-**FUNC:** `func: login(email, pass) → User | does: Validates creds`
-
-## Hard Rules
-
-- `search_nodes("index:[project]")` FIRST before answering
-- Empty? → Explore → Create index → Then answer
-- Found? → Use results, DON'T re-read files
-- Save after EVERY action with proper naming
-- `group_id` = project name (kebab-case)
-
-## Save Cadence
-
-`explore → save → explore → save → plan → save → execute → save`
-
-Max 5 lines. Subject+verb+object. Drop filler. Include identifiers.
-
-## Save After Read (MANDATORY)
-
-After `read_file`: `add_memory(name: "file:[project]:[path]", content: "path: x.js | purpose: ... | exports: ...")`
-
-After reading function: `add_memory(name: "func:[project]:[file]@[funcName]", content: "func: name(params) → return | does: ...")`
-
-**If you read it, you MUST save it.**
+```bash
+cat extensions/.claude/CLAUDE.md
 ```
 
 ---
@@ -639,130 +585,24 @@ Add to Windsurf MCP settings (`~/.codeium/windsurf/mcp_config.json`):
 
 #### Step 2: Add Global AI Rules
 
-Go to **Windsurf Settings → AI Rules → Global AI Rules** and add:
+Go to **Windsurf Settings → AI Rules → Global AI Rules** and add the content from `extensions/.claude/CLAUDE.md`.
 
-```markdown
-# Allan Memory (Graphiti MCP)
+Or copy it directly:
 
-## ⚠️ CRITICAL: Memory First (No Exceptions)
-
-**BEFORE** using `grep_search`, `file_search`, `read_file`, `ls`, `find`, or `semantic_search`:
-
-1. **ALWAYS** call `search_nodes("[project] [topic]")` FIRST
-2. Results found? → **USE THEM**, skip file operations
-3. Empty? → Proceed with file search → **SAVE results** with `add_memory`
-
-```
-❌ WRONG: grep_search → read_file → answer
-✅ RIGHT: search_nodes → (if empty) grep_search → add_memory → answer
-```
-
-**SKIP THIS = WASTE TOKENS. VIOLATION = BAD.**
-
----
-
-You have persistent memory via MCP. **Default: WRITE.** If unsure → save.
-
-## Naming Convention: [type]:[project]:[scope]
-
-| Type | Example | Use For |
-|------|---------|---------|
-| index | index:my-project | Project overview (CREATE FIRST!) |
-| file | file:my-project:src/auth.js | File summary |
-| func | func:my-project:Service.method | Function signature |
-| api | api:my-project:POST /auth | API endpoint |
-
-## Content Templates
-
-**INDEX:** `files: a.js, b.js | components: X, Y | routes: /, /api`
-**FILE:** `path: x.js | purpose: Auth | exports: login(), logout()`
-**FUNC:** `func: login(email, pass) → User | does: Validates creds`
-
-## Hard Rules
-
-- `search_nodes("index:[project]")` FIRST before answering
-- Empty? → Explore → Create index → Then answer
-- Found? → Use results, DON'T re-read files
-- Save after EVERY action with proper naming
-- `group_id` = project name (kebab-case)
-
-## Save Cadence
-
-`explore → save → explore → save → plan → save → execute → save`
-
-Max 5 lines. Subject+verb+object. Drop filler. Include identifiers.
-
-## Save After Read (MANDATORY)
-
-After `read_file`: `add_memory(name: "file:[project]:[path]", content: "...")`
-After reading function: `add_memory(name: "func:[project]:[file]@[funcName]", content: "...")`
-
-**If you read it, you MUST save it.**
+```bash
+cat extensions/.claude/CLAUDE.md
 ```
 
 ---
 
 ### Cursor
 
-Create `.cursorrules` in your project root:
+Create `.cursorrules` in your project root with the content from `extensions/.claude/CLAUDE.md`.
 
-```markdown
-# Allan Memory (Graphiti MCP)
+Or copy it directly:
 
-## ⚠️ CRITICAL: Memory First (No Exceptions)
-
-**BEFORE** using any file search, grep, or read operation:
-
-1. **ALWAYS** search memory FIRST: `curl -s -X POST http://localhost:19089/v1/memory/search/nodes -d '{"query":"[project] [topic]"}'`
-2. Results found? → **USE THEM**, skip file operations
-3. Empty? → Proceed with file search → **SAVE results**
-
-**SKIP THIS = WASTE TOKENS.**
-
----
-
-API at http://localhost:19089. **Default: WRITE.** If unsure → save.
-
-## Naming: [type]:[project]:[scope]
-
-Types: index, file, func, api, arch, pattern, task, debug
-
-Examples:
-- index:my-project (CREATE FIRST!)
-- file:my-project:src/auth.js
-- func:my-project:Service.login
-
-## Commands
-
-Search: `curl -s -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"index:[project]","limit":5}'`
-
-Store: `curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"[type]:[project]:[scope]","episode_body":"[content]","group_id":"[project]"}'`
-
-## Content Templates
-
-**INDEX:** `files: a.js, b.js | components: X, Y | routes: /, /api`
-**FILE:** `path: x.js | purpose: Auth | exports: login(), logout()`
-**FUNC:** `func: login(email, pass) → User | does: Validates creds`
-
-## Workflow
-
-1. Search "index:[project]" FIRST
-2. Empty? → Explore → Create index → Answer
-3. Found? → Use results, DON'T re-read files
-4. After any action → save with proper naming
-
-## Save Cadence
-
-`explore → save → explore → save → plan → save → execute → save`
-
-Max 5 lines. Subject+verb+object. Drop filler. Include identifiers.
-
-## Save After Read (MANDATORY)
-
-After reading file: Store `file:[project]:[path]`
-After reading function: Store `func:[project]:[file]@[funcName]`
-
-**If you read it, you MUST save it.**
+```bash
+cp extensions/.claude/CLAUDE.md .cursorrules
 ```
 
 ---
@@ -794,86 +634,13 @@ Add to `~/.continue/config.json`:
 
 Add to `~/.continue/config.json` under `models[].systemMessage`:
 
-```markdown
-# Allan Memory (Graphiti MCP)
-
-## ⚠️ CRITICAL: Memory First (No Exceptions)
-
-**BEFORE** using any file search, grep, or read operation:
-
-1. **ALWAYS** use @Allan Memory context provider FIRST
-2. Results found? → **USE THEM**, skip file operations
-3. Empty? → Proceed with file search → **SAVE results** via curl
-
-**SKIP THIS = WASTE TOKENS.**
-
----
-
-Use @Allan Memory context provider. **Default: WRITE.** If unsure → save.
-
-## Store via terminal:
-
-curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"[type]:[project]:[scope]","episode_body":"[content]","group_id":"[project]"}'
-
-Save after EVERY action. Max 5 lines. Include identifiers.
-
-## Save After Read (MANDATORY)
-
-After reading file: `curl ... -d '{"name":"file:[project]:[path]",...}'`
-After reading function: `curl ... -d '{"name":"func:[project]:[file]@[funcName]",...}'`
-
-**If you read it, you MUST save it.**
-```
+Use the system instructions from [`extensions/.claude/CLAUDE.md`](extensions/.claude/CLAUDE.md), adapting the tool commands to use the HTTP API (`curl`) instead of MCP tools.
 
 ---
 
 ### GitHub Copilot
 
-Create `.github/copilot-instructions.md`:
-
-```markdown
-# Allan Memory (Graphiti MCP)
-
-## ⚠️ CRITICAL: Memory First (No Exceptions)
-
-**BEFORE** using any file search, grep, or read operation:
-
-1. **ALWAYS** search memory FIRST: `curl -s -X POST http://localhost:19089/v1/memory/search/nodes -d '{"query":"[project] [topic]"}'`
-2. Results found? → **USE THEM**, skip file operations
-3. Empty? → Proceed with file search → **SAVE results**
-
-**SKIP THIS = WASTE TOKENS.**
-
----
-
-API at http://localhost:19089. **Default: WRITE.** If unsure → save.
-
-## Commands
-
-Search: `curl -s -X POST http://localhost:19089/v1/memory/search/nodes -H "Content-Type: application/json" -d '{"query":"index:[project]","limit":5}'`
-
-Store: `curl -X POST http://localhost:19089/v1/memory -H "Content-Type: application/json" -d '{"name":"[type]:[project]:[scope]","episode_body":"[content]","group_id":"[project]"}'`
-
-## Naming: [type]:[project]:[scope]
-
-Types: index, file, func, api, arch, pattern, task, debug
-
-## Workflow
-
-1. Search "index:[project]" FIRST
-2. Empty? → Explore → Create index → Answer
-3. Found? → Use results, DON'T re-read files
-4. After any action → save with proper naming
-
-Save after EVERY action. Max 5 lines. Include identifiers.
-
-## Save After Read (MANDATORY)
-
-After reading file: `curl ... -d '{"name":"file:[project]:[path]",...}'`
-After reading function: `curl ... -d '{"name":"func:[project]:[file]@[funcName]",...}'`
-
-**If you read it, you MUST save it.**
-```
+Create `.github/copilot-instructions.md` using the instructions from [`extensions/.claude/CLAUDE.md`](extensions/.claude/CLAUDE.md), adapting the tool commands to use the HTTP API (`curl`) instead of MCP tools.
 
 ---
 
