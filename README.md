@@ -274,6 +274,7 @@ Add to VS Code `settings.json`:
 | `search_nodes` | Search entities by query |
 | `search_facts` | Search relationships by query |
 | `check_freshness` | Check if memories are stale (>24h old) |
+| `regenerate_file` | Auto-extract entities from a source file |
 | `get_episodes` | List recent episodes |
 | `delete_episode` | Delete episode by UUID |
 
@@ -357,6 +358,7 @@ You have persistent memory via MCP. **Default: WRITE.** If unsure whether to sav
 - `search_nodes` — find entities (search "index:[project]" FIRST)
 - `search_facts` — find relationships
 - `check_freshness` — verify memories aren't stale (use if code may have changed)
+- `regenerate_file` — auto-extract entities from source file (use after editing)
 - `add_memory` — store (USE LIBERALLY)
 - `get_episodes` — list recent
 - `delete_episode` — remove stale
@@ -1185,9 +1187,76 @@ curl -X POST http://localhost:19089/v1/memory/check-freshness \
 2. Results found?
    ├─ Yes → check_freshness("function X")
    │        ├─ FRESH → Use memory ✓
-   │        └─ STALE → Re-read file → add_memory (update)
+   │        └─ STALE → regenerate_file(file_path) OR re-read → add_memory
    └─ No → Read file → add_memory (create)
 ```
+
+---
+
+## File Regeneration
+
+After editing a file, use `regenerate_file` to automatically update the knowledge graph.
+
+### How It Works
+
+```
+1. AI calls regenerate_file({ file_path, project_root, group_id })
+                              │
+                              ▼
+2. MCP reads file content from disk
+                              │
+                              ▼
+3. Check .gitignore / .dockerignore (skip if matched)
+                              │
+                              ▼
+4. LLM extracts structured entities:
+   - File: purpose, exports, dependencies
+   - Functions: name, line numbers, signature, description
+                              │
+                              ▼
+5. Sync with knowledge graph:
+   - CREATE new entities for new functions
+   - UPDATE existing entities if changed
+   - DELETE entities for removed functions
+                              │
+                              ▼
+6. Return summary:
+   {
+     "file_path": "src/auth.js",
+     "status": "success",
+     "created": ["func:project:src/auth.js:10-45@login"],
+     "updated": ["file:project:src/auth.js"],
+     "deleted": ["func:project:src/auth.js:80-100@oldFunc"]
+   }
+```
+
+### MCP Tool Usage
+
+```javascript
+// After editing a file, regenerate its entities
+regenerate_file({
+  file_path: "src/auth/login.js",      // relative or absolute
+  project_root: "/path/to/project",    // project root directory
+  group_id: "my-project"               // required
+})
+```
+
+### HTTP API Usage
+
+```bash
+curl -X POST http://localhost:19089/v1/memory/regenerate-file \
+  -H "Content-Type: application/json" \
+  -d '{"file_path":"src/auth.js","project_root":"/path/to/project","group_id":"my-project"}'
+```
+
+### Ignored Files
+
+Respects `.gitignore` and `.dockerignore` patterns, plus:
+- `node_modules/`
+- `.git/`
+- `dist/`, `build/`
+- `*.min.js`, `*.map`
+- `package-lock.json`, `yarn.lock`
 
 ---
 
