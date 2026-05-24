@@ -702,10 +702,38 @@ Create `.github/copilot-instructions.md` using the instructions from [`extension
 |----------|---------|-------------|
 | `PORT` | 19089 | Service port |
 | `LLM_API_URL` | http://localhost:11435/v1 | LLM endpoint |
-| `LLM_MODEL` | qwen2.5:7b-instruct | LLM model |
+| `LLM_MODEL` | qwen2.5:7b-instruct | LLM model for MCP tools (recall, relate, etc.) |
 | `EMBEDDER_API_URL` | http://localhost:11435/v1 | Embedding endpoint |
 | `EMBEDDER_MODEL` | nomic-embed-text | Embedding model |
 | `FALKORDB_URI` | redis://localhost:6380 | FalkorDB connection |
+| `OBSERVE_LLM` | true | Enable LLM extraction for observe hooks (set `false` for regex-only) |
+| `OBSERVE_LLM_MODEL` | *(same as LLM_MODEL)* | Cheaper model for observe hooks (e.g. `deepseek/deepseek-v4-flash`) |
+| `HASH_CACHE_LIMIT` | 3000 | Max file hashes to track for skip-if-unchanged |
+
+### Observe Hook Hash Cache
+
+Observe hooks use a **content hash cache** (`~/.allan-memory/hashes.json`) to skip reprocessing unchanged files:
+
+- `observe-read`: computes MD5 of file content, **skips** if hash matches a previous run
+- `observe-edit`: **always processes** (file was edited), updates hash so next read skips
+- Cache is capped at `HASH_CACHE_LIMIT` entries (default 3000), evicts oldest when full
+
+### Observe Hook LLM Models
+
+The observe hooks (triggered on every file read/edit) can use a **separate, cheaper model** than your main MCP tools:
+
+| Provider | Model | Input/1M | Output/1M | Notes |
+| --- | --- | --- | --- | --- |
+| **OpenRouter** | `deepseek/deepseek-v4-flash` | $0.10 | $0.20 | Best quality/price |
+| **OpenRouter** | `deepseek/deepseek-v4-flash:free` | $0.00 | $0.00 | Free tier |
+| **OpenRouter** | `google/gemma-4-31b-it:free` | $0.00 | $0.00 | Free tier, strong code |
+| **OpenRouter** | `qwen/qwen3.5-9b` | $0.04 | $0.15 | Very cheap |
+| **Ollama** | `qwen2.5:7b-instruct` | Free | Free | Local, ~8 tok/s on M2 |
+| **Ollama** | `qwen2.5:3b-instruct` | Free | Free | Fastest local option |
+| **Ollama** | `gemma3:4b` | Free | Free | Good for extraction |
+| **Disabled** | *(set `OBSERVE_LLM=false`)* | - | - | Regex-only, instant |
+
+> **Tip**: For observe hooks, you only need simple JSON extraction — a small/cheap model works great. Your main `LLM_MODEL` handles the complex MCP tool calls.
 
 ---
 
