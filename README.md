@@ -152,6 +152,17 @@ Add the `hooks` section to `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "description": "Inject project-specific context",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'see allan-memory too and always do remember save'"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Read",
@@ -179,6 +190,8 @@ Add the `hooks` section to `~/.claude/settings.json`:
 ```
 
 > Replace `/Users/YOUR_USER` with your actual home directory path.
+
+The `UserPromptSubmit` hook prepends a short reminder to every prompt so the assistant keeps using `recall` / `remember` instead of falling back to raw file search. It runs locally — no network calls, no secrets.
 
 #### Step 3: Add MCP Server
 
