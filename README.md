@@ -1014,4 +1014,4 @@ lib/
 
 ## License
 
-ISC
+[GNU AGPL-3.0](LICENSE) — you may use, modify, and redistribute this software, but any redistribution or network/SaaS deployment must release the complete corresponding source (including your modifications) under the same license.
