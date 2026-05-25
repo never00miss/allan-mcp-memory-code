@@ -722,6 +722,8 @@ Create `.github/copilot-instructions.md` using the instructions from [`extension
 | `OBSERVE_LLM` | true | Enable LLM extraction for observe hooks (set `false` for regex-only) |
 | `OBSERVE_LLM_MODEL` | *(same as LLM_MODEL)* | Cheaper model for observe hooks (e.g. `deepseek/deepseek-v4-flash`) |
 | `HASH_CACHE_LIMIT` | 3000 | Max file hashes to track for skip-if-unchanged |
+| `ALLAN_MEMORY_DEBOUNCE_SECONDS` | 60 | Observe hook debounce — wait this long after last read/edit before extracting |
+| `ALLAN_MEMORY_DEBOUNCE_DIR` | /tmp/allan-memory-debounce | Where the debounce state markers are stored |
 
 ### Observe Hook Hash Cache
 
@@ -730,6 +732,19 @@ Observe hooks use a **content hash cache** (`~/.allan-memory/hashes.json`) to sk
 - `observe-read`: computes MD5 of file content, **skips** if hash matches a previous run
 - `observe-edit`: **always processes** (file was edited), updates hash so next read skips
 - Cache is capped at `HASH_CACHE_LIMIT` entries (default 3000), evicts oldest when full
+
+### Observe Hook Debouncing (Async)
+
+The shipped `observe-read.sh` / `observe-edit.sh` hooks are **non-blocking** — they record a marker and exit in ~150ms, then a backgrounded worker waits `ALLAN_MEMORY_DEBOUNCE_SECONDS` (default 60s) before invoking the CLI.
+
+If the same file is touched again within the debounce window, the older worker bails and only the newest one runs. Net effect:
+
+```text
+edit foo.js → edit foo.js → edit foo.js   (within 60s)
+                                       └─► one extraction, 60s after the last edit
+```
+
+This avoids piling up LLM calls when the assistant edits the same file repeatedly. Set `ALLAN_MEMORY_DEBOUNCE_SECONDS=0` to disable (still async).
 
 ### Observe Hook LLM Models
 
